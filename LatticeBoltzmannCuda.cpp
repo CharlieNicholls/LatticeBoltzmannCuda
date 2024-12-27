@@ -1,5 +1,8 @@
 #include <iostream>
 
-void say_hello(){
-    std::cout << "Hello, from LatticeBoltzmannCuda!\n";
+#include "Lattice.h"
+
+int main()
+{
+    return 0;
 }
