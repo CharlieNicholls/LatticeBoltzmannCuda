@@ -6,6 +6,7 @@
 #include "Lattice.h"
 #include "LatticePoint.h"
 #include "device_launch_parameters.h"
+#include "SimCalcFuncs.cuh"
 
 __device__ bool res = false;
 
@@ -35,5 +36,15 @@ namespace RunCudaTestFunctions
     void run_test_coordinates(dim3 threads, dim3 blocks, cudaPitchedPtr latticePtr, int y_resolution, bool* result)
     {
         test_coordinates<<<threads, blocks>>>(latticePtr, y_resolution, result);
+    }
+
+    void run_test_streaming(dim3 threads, dim3 blocks, LatticeData lattice, LatticeData templattice)
+    {
+        CudaFunctions::calculate_streaming<<<threads, blocks>>>(lattice, templattice);
+    }
+
+    void run_prime_points(dim3 threads, dim3 blocks, LatticeData lattice)
+    {
+        CudaFunctions::prime_points<<<threads, blocks>>>(lattice);
     }
 }

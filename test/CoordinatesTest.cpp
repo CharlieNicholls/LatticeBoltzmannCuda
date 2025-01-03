@@ -10,9 +10,34 @@
 #include "CudaTestHelper.cuh"
 #include "device_launch_parameters.h"
 
+TEST(CoordinatesTest, TestLoadAndRetrieve)
+{
+    dim3 threads(1, 2, 1);
+    dim3 blocks(1, 1, 1);
+
+    FluidData fluid(1.0, 1.0);
+
+    Lattice testLattice(1, 2, 1, blocks, threads, fluid);
+
+    LatticePoint* latticeArray = new LatticePoint[1 * 2 * 1];
+
+    latticeArray[0].particle_distribution[5] = 2.0;
+
+    testLattice.load_data(latticeArray);
+
+    LatticePoint* tempLatticeArray = testLattice.retrieve_data();
+
+    EXPECT_NEAR(tempLatticeArray[0].particle_distribution[5], latticeArray[0].particle_distribution[5], 1e-9);
+}
+
 TEST(CoordinatesTest, TestCoordinatesOnCopy)
 {
-        Lattice testLattice(100, 100, 100);
+    dim3 threads(10, 10, 10);
+    dim3 blocks(10, 10, 10);
+
+    FluidData fluid(1.0, 1.0);
+
+    Lattice testLattice(100, 100, 100, blocks, threads, fluid);
 
     LatticePoint* latticeArray = new LatticePoint[100 * 100 * 100];
 
@@ -46,9 +71,6 @@ TEST(CoordinatesTest, TestCoordinatesOnCopy)
     cudaMalloc((void **)&coords_test_result, sizeof(bool));
 
     cudaMemcpy(coords_test_result, &final_result, sizeof(bool), cudaMemcpyHostToDevice);
-
-    dim3 threads(10, 10, 10);
-    dim3 blocks(10, 10, 10);
 
     RunCudaTestFunctions::run_test_coordinates(threads, blocks, testLattice.getCudaDataPointer(), 100, coords_test_result);
 
