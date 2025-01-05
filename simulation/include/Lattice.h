@@ -11,6 +11,7 @@ struct LatticeData
     dim3 latticeDimensions;
 
     LatticeData(cudaPitchedPtr ptr, dim3 dims) : latticePtr(ptr), latticeDimensions(dims) {};
+    LatticeData() : latticePtr(cudaPitchedPtr()), latticeDimensions(dim3()) {};
 };
 
 struct FluidData
@@ -37,17 +38,18 @@ public:
     void simulateStreaming();
     void simulateCollision();
 
+    void simulateLattice();
+
 private:
     void createExtent();
     void allocateLatticeArray();
-
-    //void simulateStreaming();
-    //void simulateCollision();
 
     cudaPitchedPtr latticePtr;
     cudaExtent latticeExtent;
 
     FluidData m_fluid;
+
+    LatticeData m_dataPackage;
 
     unsigned short m_xResolution;
     unsigned short m_yResolution;
