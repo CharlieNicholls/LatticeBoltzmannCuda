@@ -14,7 +14,7 @@ namespace CudaFunctions
         cudaPitchedPtr latticePtr = lattice.latticePtr;
         dim3 resolution = lattice.latticeDimensions;
 
-        if(x < 0 || y < 0 || z < 0 || x > resolution.x || y > resolution.y || z > resolution.z)
+        if(x < 0 || y < 0 || z < 0 || x >= resolution.x || y >= resolution.y || z >= resolution.z)
         {
             return nullptr;
         }
@@ -66,30 +66,39 @@ namespace CudaFunctions
             uz += current_point->particle_distribution[i] * directions[i][2];
         }
 
+        if(density == 0)
+        {
+            return;
+        }
+
+        ux /= density;
+        uy /= density;
+        uz /= density;
+
         {   
             double common_term = ((directions[0][0] * ux) + (directions[0][1] * uy) + (directions[0][2] * uz));
-            current_point->equilibrium[0] = (8.0/27.0) * density * (1 + (3.0 * common_term) + (4.5 * common_term * common_term) - (1.5 * (ux * ux) * (uy * uy) * (uz * uz)));
+            current_point->equilibrium[0] = (8.0/27.0) * density * (1 + (3.0 * common_term) + (4.5 * common_term * common_term) - (1.5 * ((ux * ux) + (uy * uy) + (uz * uz))));
         }
 
         for(int i = 1; i < 7; ++i)
         {
             double common_term = ((directions[i][0] * ux) + (directions[i][1] * uy) + (directions[i][2] * uz));
 
-            current_point->equilibrium[i] = (2.0/27.0) * density * (1 + (3.0 * common_term) + (4.5 * common_term * common_term) - (1.5 * (ux * ux) * (uy * uy) * (uz * uz)));
+            current_point->equilibrium[i] = (2.0/27.0) * density * (1 + (3.0 * common_term) + (4.5 * common_term * common_term) - (1.5 * ((ux * ux) + (uy * uy) + (uz * uz))));
         }
 
         for(int i = 7; i < 19; ++i)
         {
             double common_term = ((directions[i][0] * ux) + (directions[i][1] * uy) + (directions[i][2] * uz));
 
-            current_point->equilibrium[i] = (1.0/54.0) * density * (1 + (3.0 * common_term) + (4.5 * common_term * common_term) - (1.5 * (ux * ux) * (uy * uy) * (uz * uz)));
+            current_point->equilibrium[i] = (1.0/54.0) * density * (1 + (3.0 * common_term) + (4.5 * common_term * common_term) - (1.5 * ((ux * ux) + (uy * uy) + (uz * uz))));
         }
 
         for(int i = 19; i < 27; ++i)
         {
             double common_term = ((directions[i][0] * ux) + (directions[i][1] * uy) + (directions[i][2] * uz));
 
-            current_point->equilibrium[i] = (1.0/216.0) * density * (1 + (3.0 * common_term) + (4.5 * common_term * common_term) - (1.5 * (ux * ux) * (uy * uy) * (uz * uz)));
+            current_point->equilibrium[i] = (1.0/216.0) * density * (1 + (3.0 * common_term) + (4.5 * common_term * common_term) - (1.5 * ((ux * ux) + (uy * uy) + (uz * uz))));
         }
     }
 

@@ -23,6 +23,8 @@ Lattice::Lattice(int x, int y, int z, dim3 blocks, dim3 threads, FluidData fluid
 
     createExtent();
     allocateLatticeArray();
+
+    m_dataPackage = LatticeData(latticePtr, dim3(x, y, z));
 }
 
 Lattice::~Lattice()
@@ -91,19 +93,24 @@ void Lattice::simulateStreaming()
 
     cudaMalloc3D(&temporaryLatticePtr, latticeExtent);
 
-    LatticeData current_data(latticePtr, getDimensions());
     LatticeData temporary_data(temporaryLatticePtr, getDimensions());
 
-    RunCudaFunctions::run_calculate_streaming(m_blocks, m_threads, current_data, temporary_data);
+    RunCudaFunctions::run_calculate_streaming(m_blocks, m_threads, m_dataPackage, temporary_data);
 
     cudaFree(&latticePtr);
 
     latticePtr = temporaryLatticePtr;
+
+    m_dataPackage.latticePtr = temporaryLatticePtr;
 }
 
 void Lattice::simulateCollision()
 {
-    LatticeData current_data(latticePtr, getDimensions());
+    RunCudaFunctions::run_calculate_collision(m_blocks, m_threads, m_dataPackage, m_fluid.m_characteristicTimescale);
+}
 
-    RunCudaFunctions::run_calculate_collision(m_blocks, m_threads, current_data, m_fluid.m_characteristicTimescale);
+void Lattice::simulateLattice()
+{
+    simulateStreaming();
+    simulateCollision();
 }
