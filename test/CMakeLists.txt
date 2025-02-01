@@ -10,6 +10,10 @@ FetchContent_MakeAvailable(googletest)
 file(GLOB TEST_SOURCES *.cpp)
 file(GLOB CUDA_SOURCES *.cu)
 
+file(GLOB OBJ_FILES dataFiles/*.obj)
+
+file(COPY dataFiles DESTINATION ${CMAKE_BINARY_DIR})
+
 include(GoogleTest)
 
 foreach(TEST_FILE ${TEST_SOURCES})

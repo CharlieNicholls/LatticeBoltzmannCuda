@@ -6,4 +6,5 @@ RUN apt install -y gcc \
                    g++ \
                    nvidia-container-toolkit \
                    cmake \
-                   cuda-toolkit-12-8
+                   cuda-toolkit-12-8 \
+                   libcgal-dev
