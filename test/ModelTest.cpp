@@ -11,6 +11,19 @@ TEST(ModelTest, importModel)
     EXPECT_EQ(modelData.getMesh().number_of_vertices(), 3);
 }
 
+TEST(ModelTest, isModelClosed)
+{
+    Model modelData;
+
+    modelData.importModel("../dataFiles/cube.obj");
+
+    EXPECT_TRUE(modelData.isModelClosed());
+
+    modelData.importModel("../dataFiles/triangle.obj");
+
+    EXPECT_FALSE(modelData.isModelClosed());
+}
+
 int main()
 {
     testing::InitGoogleTest();

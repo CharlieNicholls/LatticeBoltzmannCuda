@@ -10,6 +10,8 @@ class Model
 public:
     void importModel(std::string filename);
 
+    bool isModelClosed();
+
     const Meshdata& getMesh() const { return modelMesh; };
 
 private:
