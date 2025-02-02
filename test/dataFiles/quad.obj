@@ -1,0 +1,8 @@
+# A simple OBJ file with one triangle
+
+v  0.0  0.0  0.0  # Vertex 1 (x, y, z)
+v  1.0  0.0  0.0  # Vertex 2 (x, y, z)
+v  0.0  1.0  0.0  # Vertex 3 (x, y, z)
+v  1.0  1.0  0.0  # Vertex 4 (x, y, z)
+
+f  1 2 3 4  # Face using the four vertices
