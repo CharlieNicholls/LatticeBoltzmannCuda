@@ -17,7 +17,7 @@ TEST(CoordinatesTest, TestLoadAndRetrieve)
 
     FluidData fluid(1.0, 1.0);
 
-    Lattice testLattice(1, 2, 1, blocks, threads, fluid);
+    Lattice testLattice(1, 2, 1, blocks, threads, fluid, 0.1);
 
     LatticePoint* latticeArray = new LatticePoint[1 * 2 * 1];
 
@@ -37,7 +37,7 @@ TEST(CoordinatesTest, TestCoordinatesOnCopy)
 
     FluidData fluid(1.0, 1.0);
 
-    Lattice testLattice(100, 100, 100, blocks, threads, fluid);
+    Lattice testLattice(100, 100, 100, blocks, threads, fluid, 0.1);
 
     LatticePoint* latticeArray = new LatticePoint[100 * 100 * 100];
 
@@ -77,6 +77,40 @@ TEST(CoordinatesTest, TestCoordinatesOnCopy)
     cudaMemcpy(&final_result, coords_test_result, sizeof(bool), cudaMemcpyDeviceToHost);
 
     EXPECT_TRUE(final_result);
+}
+
+TEST(CoordinatesTest, TestCoordinatesWithModel)
+{
+    dim3 threads(1, 1, 1);
+    dim3 blocks(10, 10, 10);
+
+    FluidData fluid(1.0, 1.0);
+
+    Lattice testLattice(10, 10, 10, blocks, threads, fluid, 0.1);
+
+    LatticePoint* latticeArray = new LatticePoint[10 * 10 * 10];
+
+    testLattice.load_data(latticeArray);
+
+    testLattice.insertModel("../dataFiles/compat_cube.obj");
+
+    LatticePoint* tempLatticeArray = testLattice.retrieve_data();
+
+    for(int y = 0; y < 10; ++y)
+    {
+        for(int x = 0; x < 10; ++x)
+        {
+            EXPECT_FALSE(tempLatticeArray[(10 * y) + x].isReflected);
+        }
+    }
+
+    for(int y = 1; y < 9; ++y)
+    {
+        for(int x = 1; x < 9; ++x)
+        {
+            EXPECT_TRUE(tempLatticeArray[500 + (10 * y) + x].isReflected);
+        }
+    }
 }
 
 int main()

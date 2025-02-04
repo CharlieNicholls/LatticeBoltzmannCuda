@@ -3,14 +3,16 @@
 #include <iostream>
 #include <stdio.h>
 #include <cstring>
+#include <CGAL/bounding_box.h>
 
 #include "Lattice.h"
 #include "LatticePoint.h"
+#include "Model.h"
 
 #include "device_launch_parameters.h"
 #include "SimCalcFuncs.cuh"
 
-Lattice::Lattice(int x, int y, int z, dim3 blocks, dim3 threads, FluidData fluid)
+Lattice::Lattice(int x, int y, int z, dim3 blocks, dim3 threads, FluidData fluid, double spacing)
 {
     m_xResolution = x;
     m_yResolution = y;
@@ -20,6 +22,8 @@ Lattice::Lattice(int x, int y, int z, dim3 blocks, dim3 threads, FluidData fluid
     m_threads = threads;
 
     m_fluid = fluid;
+
+    m_latticeSpacing = spacing;
 
     createExtent();
     allocateLatticeArray();
@@ -113,4 +117,38 @@ void Lattice::simulateLattice()
 {
     simulateStreaming();
     simulateCollision();
+}
+
+void Lattice::insertModel(std::string filename)
+{
+    m_simModel = new Model();
+
+    m_simModel->importModel(filename);
+
+    CGAL::Simple_cartesian<double>::Iso_cuboid_3 modelBound = m_simModel->bounding_box();
+
+    if( modelBound.xmin() < 0.0 || 
+        modelBound.ymin() < 0.0 || 
+        modelBound.zmin() < 0.0 ||
+        modelBound.xmax() > m_xResolution * m_latticeSpacing ||
+        modelBound.ymax() > m_yResolution * m_latticeSpacing ||
+        modelBound.zmax() > m_zResolution * m_latticeSpacing)
+    {
+        return;
+    }
+
+    LatticePoint* data_array = retrieve_data();
+
+    for(int z = 0; z < m_zResolution; ++z)
+    {
+        for(int y = 0; y < m_yResolution; ++y)
+        {
+            for(int x = 0; x < m_xResolution; ++x)
+            {
+                data_array[m_yResolution * ((m_xResolution * z) + y) + x].isReflected = m_simModel->isPointInsideModel(CGAL::Simple_cartesian<double>::Point_3(x * m_latticeSpacing, y * m_latticeSpacing, z * m_latticeSpacing));
+            }
+        }
+    }
+
+    load_data(data_array);
 }

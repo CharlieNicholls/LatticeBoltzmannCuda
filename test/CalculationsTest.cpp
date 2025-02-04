@@ -18,7 +18,7 @@ TEST(CalculationsTest, TestStreaming)
 
     FluidData fluid(1.0, 1.0);
 
-    Lattice testLattice(1, 2, 1, blocks, threads, fluid);
+    Lattice testLattice(1, 2, 1, blocks, threads, fluid, 0.1);
 
     LatticeData latticeData_1(testLattice.getCudaDataPointer(), testLattice.getDimensions());
 
@@ -46,7 +46,7 @@ TEST(CalculationsTest, TestCollision)
 
     FluidData fluid(1.0, 1.0);
 
-    Lattice testLattice(1, 1, 1, blocks, threads, fluid);
+    Lattice testLattice(1, 1, 1, blocks, threads, fluid, 0.1);
 
     LatticeData latticeData(testLattice.getCudaDataPointer(), testLattice.getDimensions());
 
@@ -76,7 +76,7 @@ TEST(CalculationsTest, TestFull)
 
     FluidData fluid(1.0, 1.0);
 
-    Lattice testLattice(1, 2, 1, blocks, threads, fluid);
+    Lattice testLattice(1, 2, 1, blocks, threads, fluid, 0.1);
 
     LatticeData latticeData_1(testLattice.getCudaDataPointer(), testLattice.getDimensions());
 
