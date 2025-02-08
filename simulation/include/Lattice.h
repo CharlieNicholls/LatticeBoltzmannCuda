@@ -3,7 +3,10 @@
 #include <cuda_runtime.h>
 #include <cuda.h>
 
+#include <string>
+
 class LatticePoint;
+class Model;
 
 struct LatticeData
 {
@@ -26,7 +29,7 @@ struct FluidData
 class Lattice
 {
 public:
-    Lattice(int x, int y, int z, dim3 blocks, dim3 threads, FluidData fluid);
+    Lattice(int x, int y, int z, dim3 blocks, dim3 threads, FluidData fluid, double spacing);
     ~Lattice();
 
     void load_data(LatticePoint* lattice_array);
@@ -39,6 +42,8 @@ public:
     void simulateCollision();
 
     void simulateLattice();
+
+    void insertModel(std::string filename);
 
 private:
     void createExtent();
@@ -54,6 +59,10 @@ private:
     unsigned short m_xResolution;
     unsigned short m_yResolution;
     unsigned short m_zResolution;
+
+    double m_latticeSpacing;
+
+    Model* m_simModel;
 
     dim3 m_threads;
     dim3 m_blocks;
