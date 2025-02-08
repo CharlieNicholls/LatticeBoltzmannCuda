@@ -31,6 +31,8 @@ public:
 
     CGAL::Simple_cartesian<double>::Iso_cuboid_3 bounding_box();
 
+    CoordsSystem::Vector_3 reflectionVector(CoordsSystem::Point_3 point_1, CoordsSystem::Point_3 point_2);
+
 private:
     void lazyAabbTreeConstruction();
 

@@ -48,6 +48,29 @@ TEST(ModelTest, checkErrorModel)
     EXPECT_TRUE(modelData.checkError());
 }
 
+TEST(ModelTest, intersectionNormal)
+{
+    Model modelData;
+
+    modelData.importModel("../dataFiles/compat_cube.obj");
+
+    CGAL::Simple_cartesian<double>::Point_3 point_1(0.5, 0.5, -1.0);
+    CGAL::Simple_cartesian<double>::Point_3 point_2(0.5, 0.5,  1.0);
+
+    CGAL::Simple_cartesian<double>::Vector_3 result = modelData.reflectionVector(point_1, point_2);
+    CGAL::Simple_cartesian<double>::Vector_3 value(0.0, 0.0, -1.0);
+
+    EXPECT_NEAR(result.x(), value.x(), 1e-9);
+    EXPECT_NEAR(result.y(), value.y(), 1e-9);
+    EXPECT_NEAR(result.z(), value.z(), 1e-9);
+
+    point_2 = CGAL::Simple_cartesian<double>::Point_3(0.5, 0.5,  -2.0);
+
+    result = modelData.reflectionVector(point_1, point_2);
+
+    EXPECT_EQ(result, CGAL::Simple_cartesian<double>::Vector_3(0.0, 0.0, 0.0));
+}
+
 int main()
 {
     testing::InitGoogleTest();

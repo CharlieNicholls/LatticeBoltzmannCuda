@@ -1,10 +1,12 @@
 #include <CGAL/Polygon_mesh_processing/IO/polygon_mesh_io.h>
+#include <CGAL/Polygon_mesh_processing/compute_normal.h>
 #include <CGAL/Side_of_triangle_mesh.h>
 #include <CGAL/AABB_tree.h>
 #include <CGAL/AABB_traits.h>
 #include <CGAL/AABB_face_graph_triangle_primitive.h>
 #include <CGAL/Simple_cartesian.h>
 #include <CGAL/bounding_box.h>
+#include <boost/optional.hpp>
 
 #include "Model.h"
 
@@ -13,6 +15,7 @@ typedef CGAL::Surface_mesh<CoordsSystem::Point_3> Mesh;
 typedef CGAL::AABB_face_graph_triangle_primitive<Mesh> Primitive;
 typedef CGAL::AABB_traits<CoordsSystem, Primitive> AABB_traits;
 typedef CGAL::AABB_tree<AABB_traits> AABB_tree;
+typedef boost::optional<AABB_tree::Intersection_and_primitive_id<CoordsSystem::Ray_3>::Type> Ray_intersection;
 
 void Model::importModel(std::string filename)
 {
@@ -61,4 +64,16 @@ void Model::lazyAabbTreeConstruction()
 CGAL::Simple_cartesian<double>::Iso_cuboid_3 Model::bounding_box()
 {
     return CGAL::bounding_box(modelMesh.points().begin(), modelMesh.points().end());
+}
+
+CoordsSystem::Vector_3 Model::reflectionVector(CoordsSystem::Point_3 point_1, CoordsSystem::Point_3 point_2)
+{
+    Ray_intersection intersection = modelTree->first_intersection(CoordsSystem::Ray_3(point_1, point_2));
+
+    if(intersection)
+    {
+        return CGAL::Polygon_mesh_processing::compute_face_normal(intersection->second, modelMesh);
+    }
+
+    return CoordsSystem::Vector_3(0.0, 0.0, 0.0);
 }
