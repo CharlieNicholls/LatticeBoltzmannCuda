@@ -4,6 +4,7 @@
 #include <cuda.h>
 
 #include <string>
+#include <vector>
 
 class LatticePoint;
 class Model;
