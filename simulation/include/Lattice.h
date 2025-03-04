@@ -1,10 +1,14 @@
 #pragma once
 
+#include <Geometry.h>
+
 #include <cuda_runtime.h>
 #include <cuda.h>
-
 #include <string>
 #include <vector>
+#include <array>
+#include <utility>
+
 
 class LatticePoint;
 class Model;
@@ -45,6 +49,8 @@ public:
     void simulateLattice();
 
     void insertModel(std::string filename);
+
+    std::array<std::pair<double, int>, 3> distributeVector(Point_3 vector);
 
 private:
     void createExtent();

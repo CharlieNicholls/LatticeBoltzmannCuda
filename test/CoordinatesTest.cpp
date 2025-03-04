@@ -9,6 +9,7 @@
 #include "LatticePoint.h"
 #include "CudaTestHelper.cuh"
 #include "device_launch_parameters.h"
+#include "Constants.h"
 
 TEST(CoordinatesTest, TestLoadAndRetrieve)
 {
@@ -111,6 +112,29 @@ TEST(CoordinatesTest, TestCoordinatesWithModel)
             EXPECT_TRUE(tempLatticeArray[500 + (10 * y) + x].isReflected);
         }
     }
+}
+
+TEST(CoordinatesTest, TestDistributeVector)
+{
+    dim3 threads(1, 1, 1);
+    dim3 blocks(1, 1, 1);
+
+    FluidData fluid(1.0, 1.0);
+
+    Lattice testLattice(1, 1, 1, blocks, threads, fluid, 0.1);
+
+    Point_3 vector(1.0, 0.1, 0.1);
+
+    std::array<std::pair<double, int>, 3> expected{std::pair<double, int>{0.6726727939963124, 6}, std::pair<double, int>{0.5232166435699435, 18}, std::pair<double, int>{0.5232166435699435, 17}};
+
+    std::array<std::pair<double, int>, 3> result = testLattice.distributeVector(vector);
+
+    EXPECT_NEAR(result[0].first, expected[0].first, CONSTANTS::GEOMETRIC_TOLERANCE);
+    EXPECT_NEAR(result[1].first, expected[1].first, CONSTANTS::GEOMETRIC_TOLERANCE);
+    EXPECT_NEAR(result[2].first, expected[2].first, CONSTANTS::GEOMETRIC_TOLERANCE);
+    EXPECT_EQ(result[0].second, expected[0].second);
+    EXPECT_EQ(result[1].second, expected[1].second);
+    EXPECT_EQ(result[2].second, expected[2].second);
 }
 
 int main()
