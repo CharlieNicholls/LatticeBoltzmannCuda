@@ -1,13 +1,13 @@
 #pragma once
 
-#include <Geometry.h>
-
 #include <cuda_runtime.h>
 #include <cuda.h>
 #include <string>
 #include <vector>
 #include <array>
 #include <utility>
+
+#include "Geometry.h"
 
 
 class LatticePoint;
@@ -45,16 +45,21 @@ public:
 
     void simulateStreaming();
     void simulateCollision();
+    void simulateReflections();
 
     void simulateLattice();
 
     void insertModel(std::string filename);
 
-    std::array<std::pair<double, int>, 3> distributeVector(Point_3 vector);
+    std::array<std::pair<double, int>, 27> distributeVector(Point_3 vector);
+
+    void preProcessModel();
 
 private:
     void createExtent();
     void allocateLatticeArray();
+
+    inline LatticePoint* getElementAtDirection(int& x, int& y, int& z, int& dir_index, LatticePoint* data_array);
 
     cudaPitchedPtr latticePtr;
     cudaExtent latticeExtent;

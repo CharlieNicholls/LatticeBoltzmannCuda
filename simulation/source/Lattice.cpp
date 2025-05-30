@@ -1,11 +1,13 @@
+#pragma once
+
 #include <cuda_runtime.h>
 #include <cuda.h>
-#include <iostream>
 #include <stdio.h>
 #include <cstring>
 #include <CGAL/bounding_box.h>
 #include <queue>
 #include <math.h>
+#include <vector>
 
 #include "Lattice.h"
 #include "LatticePoint.h"
@@ -59,7 +61,10 @@ void Lattice::load_data(LatticePoint* lattice_array)
     params.extent = latticeExtent;
     params.kind = cudaMemcpyHostToDevice;
 
-    cudaMemcpy3D(&params);
+    cudaError_t err = cudaMemcpy3D(&params);
+    if (err != cudaSuccess) {
+        printf("Lattice::load_data failed: %s\n", cudaGetErrorString(err));
+    }
 }
 
 LatticePoint* Lattice::retrieve_data()
@@ -77,7 +82,7 @@ LatticePoint* Lattice::retrieve_data()
 
     cudaError_t err = cudaMemcpy3D(&params);
     if (err != cudaSuccess) {
-        printf("cudaMemcpy3D failed: %s\n", cudaGetErrorString(err));
+        printf("Lattice::retrieve_data failed: %s\n", cudaGetErrorString(err));
         delete[] lattice_array;
         return nullptr;
     }
@@ -97,13 +102,19 @@ void Lattice::simulateStreaming()
 {
     cudaPitchedPtr temporaryLatticePtr;
 
-    cudaMalloc3D(&temporaryLatticePtr, latticeExtent);
+    cudaError_t err = cudaMalloc3D(&temporaryLatticePtr, latticeExtent);
+    if (err != cudaSuccess) {
+        printf("Lattice::simulateStreaming malloc: %s\n", cudaGetErrorString(err));
+    }
 
     LatticeData temporary_data(temporaryLatticePtr, getDimensions());
 
     RunCudaFunctions::run_calculate_streaming(m_blocks, m_threads, m_dataPackage, temporary_data);
 
-    cudaFree(&latticePtr);
+    err = cudaFree(latticePtr.ptr);
+    if (err != cudaSuccess) {
+        printf("Lattice::simulateStreaming free: %s\n", cudaGetErrorString(err));
+    }
 
     latticePtr = temporaryLatticePtr;
 
@@ -113,6 +124,39 @@ void Lattice::simulateStreaming()
 void Lattice::simulateCollision()
 {
     RunCudaFunctions::run_calculate_collision(m_blocks, m_threads, m_dataPackage, m_fluid.m_characteristicTimescale);
+}
+
+void Lattice::simulateReflections()
+{
+    cudaPitchedPtr temporaryLatticePtr;
+
+    cudaMalloc3D(&temporaryLatticePtr, latticeExtent);
+
+    LatticeData temporary_data(temporaryLatticePtr, getDimensions());
+
+    cudaMemcpy3DParms params = {0};
+    params.srcPtr = m_dataPackage.latticePtr;
+    params.dstPtr = temporaryLatticePtr;
+    params.extent = latticeExtent;
+    params.kind = cudaMemcpyDeviceToDevice;
+
+    cudaError_t err = cudaMemcpy3D(&params);
+    if (err != cudaSuccess) {
+        printf("Lattice::simulateReflections memcpy failed: %s\n", cudaGetErrorString(err));
+        return;
+    }
+
+    RunCudaFunctions::run_calculate_reflections(m_blocks, m_threads, m_dataPackage, temporary_data);
+
+    err = cudaFree(latticePtr.ptr);
+    if (err != cudaSuccess) {
+        printf("Lattice::simulateReflections free failed: %s\n", cudaGetErrorString(err));
+        return;
+    }
+
+    latticePtr = temporaryLatticePtr;
+
+    m_dataPackage.latticePtr = temporaryLatticePtr;
 }
 
 void Lattice::simulateLattice()
@@ -141,13 +185,13 @@ void Lattice::insertModel(std::string filename)
 
     LatticePoint* data_array = retrieve_data();
 
-    for(int z = 0; z < m_zResolution; ++z)
+    for(int x = 0; x < m_xResolution; ++x)
     {
         for(int y = 0; y < m_yResolution; ++y)
         {
-            for(int x = 0; x < m_xResolution; ++x)
+            for(int z = 0; z < m_zResolution; ++z)
             {
-                data_array[m_yResolution * ((m_xResolution * z) + y) + x].isReflected = m_simModel->isPointInsideModel(CGAL::Simple_cartesian<double>::Point_3(x * m_latticeSpacing, y * m_latticeSpacing, z * m_latticeSpacing));
+                data_array[z + (y * m_zResolution) + (x * m_zResolution * m_yResolution)].isInternal = m_simModel->isPointInsideModel(CGAL::Simple_cartesian<double>::Point_3(x * m_latticeSpacing, y * m_latticeSpacing, z * m_latticeSpacing));
             }
         }
     }
@@ -155,7 +199,7 @@ void Lattice::insertModel(std::string filename)
     load_data(data_array);
 }
 
-std::array<std::pair<double, int>, 3> Lattice::distributeVector(Point_3 vector)
+std::array<std::pair<double, int>, 27> Lattice::distributeVector(Point_3 vector)
 {
     constexpr double directions[27][3] = {  {0.0, 0.0, 0.0},
                                             {-1.0, 0.0, 0.0}, 
@@ -185,11 +229,13 @@ std::array<std::pair<double, int>, 3> Lattice::distributeVector(Point_3 vector)
                                             {1.0/1.7320508075688772, 1.0/1.7320508075688772, -1.0/1.7320508075688772}, 
                                             {1.0/1.7320508075688772, 1.0/1.7320508075688772, 1.0/1.7320508075688772}};
 
-    std::priority_queue<std::pair<double, int>> dot_products;
+    std::priority_queue<std::pair<double, int>, std::vector<std::pair<double, int>>> dot_products;
     
-    auto dot_prod = [&](int index)
+    auto dist_func = [&](int index)
     {
-        return (vector.x * directions[index][0]) + (vector.y * directions[index][1]) + (vector.z * directions[index][2]);
+        return 2.0 - sqrt(((vector.x - directions[index][0]) * (vector.x - directions[index][0])) +
+                          ((vector.y - directions[index][1]) * (vector.y - directions[index][1])) +
+                          ((vector.z - directions[index][2]) * (vector.z - directions[index][2])));
     };
 
     auto top_pop = [&]()
@@ -201,18 +247,112 @@ std::array<std::pair<double, int>, 3> Lattice::distributeVector(Point_3 vector)
 
     for(int i = 0; i < 27; ++i)
     {
-        dot_products.push({dot_prod(i), i});
+        dot_products.push({dist_func(i), i});
     }
 
-    std::array<std::pair<double, int>, 3> result = {top_pop(), top_pop(), top_pop()};
+    std::array<std::pair<double, int>, 27> result;
 
-    const double norm = sqrt((result[0].first * result[0].first) + (result[1].first * result[1].first) + (result[2].first * result[2].first));
-
-    std::cout << norm << std::endl;
-
-    result[0].first /= norm;
-    result[1].first /= norm;
-    result[2].first /= norm;
+    for(int i = 0; i < 27; ++i)
+    {
+        result[i] = top_pop();
+    }
 
     return result;
+}
+
+void Lattice::preProcessModel()
+{
+    if(m_simModel == nullptr)
+    {
+        return;
+    }
+
+    constexpr int directions[27][3] = {{0, 0, 0}, {-1, 0, 0}, {0, -1, 0}, {0, 0, -1}, {0, 0, 1}, {0, 1, 0}, {1, 0, 0}, {-1, -1, 0}, {-1, 0, -1}, {-1, 0, 1}, {-1, 1, 0}, {0, -1, -1}, {0, -1, 1}, {0, 1, -1}, {0, 1, 1}, {1, -1, 0}, {1, 0, -1}, {1, 0, 1}, {1, 1, 0}, {-1, -1, -1}, {-1, -1, 1}, {-1, 1, -1}, {-1, 1, 1}, {1, -1, -1}, {1, -1, 1}, {1, 1, -1}, {1, 1, 1}};
+    constexpr int inverse_directions[27] = {0, 6, 5, 4, 3, 2, 1, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 26, 25, 24, 23, 22, 21, 20, 19};
+
+    LatticePoint* data_array = retrieve_data();
+
+    for(int x = 0; x < m_xResolution; ++x)
+    {
+        for(int y = 0; y < m_yResolution; ++y)
+        {
+            for(int z = 0; z < m_zResolution; ++z)
+            {
+                LatticePoint* curr_element = &data_array[z + (y * m_zResolution) + (x * m_zResolution * m_yResolution)];
+
+                if(curr_element->isInternal)
+                {
+                    for(int dir_index = 0; dir_index < 27; ++dir_index)
+                    {
+                        if( ((x + directions[dir_index][0]) >= m_xResolution) ||
+                            ((y + directions[dir_index][1]) >= m_yResolution) ||
+                            ((z + directions[dir_index][2]) >= m_zResolution) ||
+                            ((x + directions[dir_index][0]) < 0) ||
+                            ((y + directions[dir_index][1]) < 0) ||
+                            ((z + directions[dir_index][2]) < 0))
+                        {
+                            continue;
+                        }
+
+                        if(!getElementAtDirection(x, y, z, dir_index, data_array)->isInternal)
+                        {
+                            Point_3 reflection_vector = m_simModel->reflectionVector(CoordsSystem::Point_3(m_latticeSpacing * (x + directions[dir_index][0]), m_latticeSpacing * (y + directions[dir_index][1]), m_latticeSpacing * (z + directions[dir_index][2])),
+                                                                                     CoordsSystem::Point_3(m_latticeSpacing * x, m_latticeSpacing * y, m_latticeSpacing * z));
+
+                            std::array<std::pair<double, int>, 27> resulting_dist = distributeVector(reflection_vector);
+                            
+                            int counter = 0;
+
+                            for(int i = 0; i < 27; ++i)
+                            {
+                                if(!getElementAtDirection(x, y, z, resulting_dist[i].second, data_array)->isInternal)
+                                {
+                                    curr_element->reflection_directions[inverse_directions[dir_index] * 3 + counter] = resulting_dist[i].second;
+                                    curr_element->reflection_weight[inverse_directions[dir_index] * 3 + counter] = resulting_dist[i].first;
+
+                                    curr_element->isReflected = true;
+
+                                    ++counter;
+                                }
+
+                                if(counter == 3)
+                                {
+                                    break;
+                                }
+                            }
+                        }
+                        double norm = 0.0;
+
+                        for(int i = 0; i < 3; ++i)
+                        {
+                            if(curr_element->reflection_directions[inverse_directions[dir_index] * 3 + i] != 0)
+                            {
+                                norm += curr_element->reflection_weight[inverse_directions[dir_index] * 3 + i];
+                            }
+                        }
+
+                        if(norm != 0.0)
+                        {
+                            for(int i = 0; i < 3; ++i)
+                            {
+                                if(curr_element->reflection_directions[inverse_directions[dir_index] * 3 + i] != 0)
+                                {
+                                    curr_element->reflection_weight[inverse_directions[dir_index] * 3 + i] /= norm;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    load_data(data_array);
+}
+
+inline LatticePoint* Lattice::getElementAtDirection(int& x, int& y, int& z, int& dir_index, LatticePoint* data_array)
+{
+    constexpr int directions[27][3] = {{0, 0, 0}, {-1, 0, 0}, {0, -1, 0}, {0, 0, -1}, {0, 0, 1}, {0, 1, 0}, {1, 0, 0}, {-1, -1, 0}, {-1, 0, -1}, {-1, 0, 1}, {-1, 1, 0}, {0, -1, -1}, {0, -1, 1}, {0, 1, -1}, {0, 1, 1}, {1, -1, 0}, {1, 0, -1}, {1, 0, 1}, {1, 1, 0}, {-1, -1, -1}, {-1, -1, 1}, {-1, 1, -1}, {-1, 1, 1}, {1, -1, -1}, {1, -1, 1}, {1, 1, -1}, {1, 1, 1}};
+
+    return &data_array[(z + directions[dir_index][2]) + ((y + directions[dir_index][1]) * m_zResolution) + ((x + directions[dir_index][0]) * m_zResolution * m_yResolution)];
 }
