@@ -22,11 +22,11 @@ namespace CudaFunctions
         size_t pitch = latticePtr.pitch;
         size_t slicePitch = pitch * latticePtr.ysize;
 
-        char* curr_slice = (char*)latticePtr.ptr + z * slicePitch;
+        char* curr_slice = (char*)latticePtr.ptr + x * slicePitch;
 
         LatticePoint* lattice_points = (LatticePoint*)(curr_slice + y * pitch);
 
-        return &lattice_points[x];
+        return &lattice_points[z];
     }
 
     __device__ LatticePoint* get_lattice_point(LatticeData lattice)
@@ -128,6 +128,33 @@ namespace CudaFunctions
             current_point->particle_distribution[i] += (current_point->equilibrium[i] - current_point->particle_distribution[i])/timescale;
         }
     }
+
+    __global__ void calculate_reflections(LatticeData lattice, LatticeData templattice)
+    {
+        LatticePoint* current_point = get_lattice_point(lattice);
+
+        constexpr int directions[27][3] = {{0, 0, 0}, {-1, 0, 0}, {0, -1, 0}, {0, 0, -1}, {0, 0, 1}, {0, 1, 0}, {1, 0, 0}, {-1, -1, 0}, {-1, 0, -1}, {-1, 0, 1}, {-1, 1, 0}, {0, -1, -1}, {0, -1, 1}, {0, 1, -1}, {0, 1, 1}, {1, -1, 0}, {1, 0, -1}, {1, 0, 1}, {1, 1, 0}, {-1, -1, -1}, {-1, -1, 1}, {-1, 1, -1}, {-1, 1, 1}, {1, -1, -1}, {1, -1, 1}, {1, 1, -1}, {1, 1, 1}};
+
+        if(current_point->isReflected)
+        {
+            for(int i = 1; i < 81; ++i)
+            {
+                int reflection_direction = current_point->reflection_directions[i];
+
+                if(reflection_direction == 0)
+                {
+                    continue;
+                }
+
+                LatticePoint* neighbour = get_lattice_at_coords(templattice, current_point->x + directions[reflection_direction][0], current_point->y + directions[reflection_direction][1], current_point->z + directions[reflection_direction][2]);
+
+                if(neighbour != nullptr)
+                {
+                    neighbour->particle_distribution[reflection_direction] += current_point->particle_distribution[i/3] * current_point->reflection_weight[i];
+                }
+            }
+        }
+    }
 }
 
 namespace RunCudaFunctions
@@ -142,5 +169,15 @@ namespace RunCudaFunctions
         CudaFunctions::calculate_equilibrium<<<blocks, threads>>>(lattice);
 
         CudaFunctions::calculate_collision<<<blocks, threads>>>(lattice, timescale);
+    }
+
+    void run_calculate_reflections(dim3 blocks, dim3 threads, LatticeData lattice, LatticeData templattice)
+    {
+        CudaFunctions::calculate_reflections<<<blocks, threads>>>(lattice, templattice);
+    }
+
+    void run_prime_points(dim3 blocks, dim3 threads, LatticeData lattice)
+    {
+        CudaFunctions::prime_points<<<blocks, threads>>>(lattice);
     }
 }

@@ -1,9 +1,9 @@
 #include <cuda_runtime.h>
 #include <cuda.h>
-#include <iostream>
 #include <stdio.h>
 #include <cassert>
 #include <gtest/gtest.h>
+#include <math.h>
 
 #include "Lattice.h"
 #include "LatticePoint.h"
@@ -44,11 +44,11 @@ TEST(CoordinatesTest, TestCoordinatesOnCopy)
 
     int counter = 0;
 
-    for(int z = 0; z < 100; ++z)
+    for(int x = 0; x < 100; ++x)
     {
         for(int y = 0; y < 100; ++y)
         {
-            for(int x = 0; x < 100; ++x)
+            for(int z = 0; z < 100; ++z)
             {
                 LatticePoint curr_point;
 
@@ -101,7 +101,7 @@ TEST(CoordinatesTest, TestCoordinatesWithModel)
     {
         for(int x = 0; x < 10; ++x)
         {
-            EXPECT_FALSE(tempLatticeArray[(10 * y) + x].isReflected);
+            EXPECT_FALSE(tempLatticeArray[(10 * y) + x].isInternal);
         }
     }
 
@@ -109,7 +109,7 @@ TEST(CoordinatesTest, TestCoordinatesWithModel)
     {
         for(int x = 1; x < 9; ++x)
         {
-            EXPECT_TRUE(tempLatticeArray[500 + (10 * y) + x].isReflected);
+            EXPECT_TRUE(tempLatticeArray[500 + (10 * y) + x].isInternal);
         }
     }
 }
@@ -125,9 +125,15 @@ TEST(CoordinatesTest, TestDistributeVector)
 
     Point_3 vector(1.0, 0.1, 0.1);
 
-    std::array<std::pair<double, int>, 3> expected{std::pair<double, int>{0.6726727939963124, 6}, std::pair<double, int>{0.5232166435699435, 18}, std::pair<double, int>{0.5232166435699435, 17}};
+    std::array<std::pair<double, int>, 3> expected{std::pair<double, int>{0.4134132615337746, 6}, std::pair<double, int>{0.2932933692331128, 18}, std::pair<double, int>{0.2932933692331128, 17}};
 
-    std::array<std::pair<double, int>, 3> result = testLattice.distributeVector(vector);
+    std::array<std::pair<double, int>, 27> result = testLattice.distributeVector(vector);
+
+    double norm = result[0].first + result[1].first + result[2].first;
+
+    result[0].first /= norm;
+    result[1].first /= norm;
+    result[2].first /= norm;
 
     EXPECT_NEAR(result[0].first, expected[0].first, CONSTANTS::GEOMETRIC_TOLERANCE);
     EXPECT_NEAR(result[1].first, expected[1].first, CONSTANTS::GEOMETRIC_TOLERANCE);
@@ -135,6 +141,37 @@ TEST(CoordinatesTest, TestDistributeVector)
     EXPECT_EQ(result[0].second, expected[0].second);
     EXPECT_EQ(result[1].second, expected[1].second);
     EXPECT_EQ(result[2].second, expected[2].second);
+}
+
+TEST(CoordinatesTest, TestReflection)
+{
+    dim3 threads(3, 3, 3);
+    dim3 blocks(1, 1, 1);
+
+    FluidData fluid(1.0, 1.0);
+
+    Lattice testLattice(3, 3, 3, blocks, threads, fluid, 0.5);
+
+    LatticePoint* latticeArray = new LatticePoint[3 * 3 * 3];
+
+    testLattice.load_data(latticeArray);
+
+    testLattice.insertModel("../dataFiles/cube_angled.obj");
+
+    LatticeData latticeData_1(testLattice.getCudaDataPointer(), testLattice.getDimensions());
+
+    testLattice.simulateCollision();
+
+    testLattice.preProcessModel();
+
+    LatticePoint* tempLatticeArray = testLattice.retrieve_data();
+
+    EXPECT_NEAR(tempLatticeArray[13].reflection_weight[1*3 + 0], 0.367402, 1e-6);
+    EXPECT_NEAR(tempLatticeArray[13].reflection_weight[1*3 + 1], 0.341121, 1e-6);
+    EXPECT_NEAR(tempLatticeArray[13].reflection_weight[1*3 + 2], 0.291477, 1e-6);
+    EXPECT_EQ(tempLatticeArray[13].reflection_directions[1*3 + 0], 17);
+    EXPECT_EQ(tempLatticeArray[13].reflection_directions[1*3 + 1], 4);
+    EXPECT_EQ(tempLatticeArray[13].reflection_directions[1*3 + 2], 26);
 }
 
 int main()

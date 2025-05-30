@@ -1,3 +1,5 @@
+#pragma once
+
 #include <CGAL/Surface_mesh.h>
 #include <CGAL/Polygon_mesh_processing/IO/polygon_mesh_io.h>
 #include <CGAL/Side_of_triangle_mesh.h>
@@ -6,6 +8,8 @@
 #include <CGAL/AABB_face_graph_triangle_primitive.h>
 #include <CGAL/Simple_cartesian.h>
 #include <string>
+
+#include "Geometry.h"
 
 using Meshdata = CGAL::Surface_mesh<CGAL::Simple_cartesian<double>::Point_3>;
 
@@ -31,7 +35,7 @@ public:
 
     CGAL::Simple_cartesian<double>::Iso_cuboid_3 bounding_box();
 
-    CoordsSystem::Vector_3 reflectionVector(CoordsSystem::Point_3 point_1, CoordsSystem::Point_3 point_2);
+    Point_3 reflectionVector(CoordsSystem::Point_3 point_1, CoordsSystem::Point_3 point_2);
 
 private:
     void lazyAabbTreeConstruction();

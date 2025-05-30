@@ -1,6 +1,5 @@
 #include <cuda_runtime.h>
 #include <cuda.h>
-#include <iostream>
 #include <stdio.h>
 
 #include "Lattice.h"
@@ -19,11 +18,11 @@ __global__ void test_coordinates(cudaPitchedPtr latticePtr, int y_resolution, bo
     size_t pitch = latticePtr.pitch;
     size_t slicePitch = pitch * y_resolution;
 
-    char* curr_slice = (char*)latticePtr.ptr + z * slicePitch;
+    char* curr_slice = (char*)latticePtr.ptr + x * slicePitch;
 
     LatticePoint* lattice_points = (LatticePoint*)(curr_slice + y * pitch);
 
-    LatticePoint point = lattice_points[x];
+    LatticePoint point = lattice_points[z];
 
     if(point.x != x || point.y != y || point.z != z)
     {

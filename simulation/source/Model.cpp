@@ -8,6 +8,8 @@
 #include <CGAL/bounding_box.h>
 #include <boost/optional.hpp>
 
+#include <filesystem>
+
 #include "Model.h"
 
 typedef CGAL::Simple_cartesian<double> CoordsSystem;
@@ -19,6 +21,11 @@ typedef boost::optional<AABB_tree::Intersection_and_primitive_id<CoordsSystem::R
 
 void Model::importModel(std::string filename)
 {
+    if(!std::filesystem::exists(filename))
+    {
+        return;
+    }
+
     CGAL::IO::read_polygon_mesh(filename, modelMesh);
 
     meshValid = CGAL::is_triangle_mesh(modelMesh);
@@ -66,14 +73,20 @@ CGAL::Simple_cartesian<double>::Iso_cuboid_3 Model::bounding_box()
     return CGAL::bounding_box(modelMesh.points().begin(), modelMesh.points().end());
 }
 
-CoordsSystem::Vector_3 Model::reflectionVector(CoordsSystem::Point_3 point_1, CoordsSystem::Point_3 point_2)
+Point_3 Model::reflectionVector(CoordsSystem::Point_3 point_1, CoordsSystem::Point_3 point_2)
 {
     Ray_intersection intersection = modelTree->first_intersection(CoordsSystem::Ray_3(point_1, point_2));
 
+    Point_3 vector{point_1.x() - point_2.x(), point_1.y() - point_2.y(), point_1.z() - point_2.z()};
+
+    vector.normaliseVector();
+
     if(intersection)
     {
-        return CGAL::Polygon_mesh_processing::compute_face_normal(intersection->second, modelMesh);
+        CoordsSystem::Vector_3 normal = CGAL::Polygon_mesh_processing::compute_face_normal(intersection->second, modelMesh);
+        Point_3 result = rotateVectorAroundAxis({normal.x(), normal.y(), normal.z()}, vector, M_PI);
+        return result;
     }
 
-    return CoordsSystem::Vector_3(0.0, 0.0, 0.0);
+    return Point_3{0.0, 0.0, 0.0};
 }

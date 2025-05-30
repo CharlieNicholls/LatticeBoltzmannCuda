@@ -6,5 +6,7 @@ struct LatticePoint
     double equilibrium[27];
     double particle_distribution[27];
     bool isReflected;
-    double reflection_weight[27];
+    bool isInternal;
+    int reflection_directions[81];
+    double reflection_weight[81];
 };
