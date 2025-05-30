@@ -137,6 +137,8 @@ TEST(CalculationsTest, TestReflections)
     EXPECT_NEAR(latticeArray[point_at_coords(2, 1, 2)].particle_distribution[17], 0.367402, 1e-6);
     EXPECT_NEAR(latticeArray[point_at_coords(1, 1, 2)].particle_distribution[4], 0.341121, 1e-6);
     EXPECT_NEAR(latticeArray[point_at_coords(2, 2, 2)].particle_distribution[26], 0.291477, 1e-6);
+
+    EXPECT_NEAR(latticeArray[point_at_coords(1, 1, 1)].particle_distribution[1], 0.0, 1e-6);
 }
 
 int main(int argc, char **argv) {
