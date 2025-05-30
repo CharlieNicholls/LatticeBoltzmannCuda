@@ -153,6 +153,10 @@ namespace CudaFunctions
                     neighbour->particle_distribution[reflection_direction] += current_point->particle_distribution[i/3] * current_point->reflection_weight[i];
                 }
             }
+
+            LatticePoint* current_point_temp = get_lattice_point(templattice);
+
+            memset(&current_point_temp->particle_distribution[0], 0, sizeof(LatticePoint));
         }
     }
 }
