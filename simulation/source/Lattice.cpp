@@ -159,6 +159,14 @@ void Lattice::simulateReflections()
     m_dataPackage.latticePtr = temporaryLatticePtr;
 }
 
+void Lattice::simulateFlow()
+{
+    if(m_flowData != nullptr)
+    {
+        RunCudaFunctions::run_generate_flow(m_blocks, m_threads, m_dataPackage, d_flowData);
+    }
+}
+
 void Lattice::simulateLattice()
 {
     simulateStreaming();
@@ -348,6 +356,16 @@ void Lattice::preProcessModel()
     }
 
     load_data(data_array);
+}
+
+void Lattice::setFlowData(FlowData* flowData)
+{
+    cudaFree(d_flowData);
+
+    m_flowData = flowData;
+
+    cudaMalloc(&d_flowData, sizeof(FlowData));
+    cudaMemcpy(d_flowData, m_flowData, sizeof(FlowData), cudaMemcpyHostToDevice);
 }
 
 inline LatticePoint* Lattice::getElementAtDirection(int& x, int& y, int& z, int& dir_index, LatticePoint* data_array)

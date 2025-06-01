@@ -5,3 +5,5 @@ add_subdirectory(source)
 # Create a library that includes both headers and sources
 add_library(SimulationLib ${SOURCE_FILES})
 target_include_directories(SimulationLib PUBLIC include)
+
+set_target_properties(SimulationLib PROPERTIES CUDA_SEPARABLE_COMPILATION ON)

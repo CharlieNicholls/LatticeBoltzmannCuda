@@ -4,8 +4,10 @@
 
 #include "Lattice.h"
 #include "LatticePoint.h"
+#include "FlowSurface.h"
 #include "device_launch_parameters.h"
 #include "SimCalcFuncs.cuh"
+#include "FlowCriterion.cuh"
 
 namespace CudaFunctions
 {
@@ -159,6 +161,23 @@ namespace CudaFunctions
             memset(&current_point_temp->particle_distribution[0], 0, sizeof(LatticePoint));
         }
     }
+
+    __global__ void generate_flow(LatticeData lattice, FlowData* flowData)
+    {
+        int z = blockDim.z * blockIdx.z + threadIdx.z;
+        int y = blockDim.y * blockIdx.y + threadIdx.y;
+        int x = blockDim.x * blockIdx.x + threadIdx.x;
+
+        if(flowData->pointCriterion(x, y, z))
+        {
+            LatticePoint* current_point = get_lattice_point(lattice);
+
+            for(int i = 0; i < 27; ++i)
+            {
+                current_point->particle_distribution[i] += flowData->inducedFlow.particle_distribution[i];
+            }
+        }
+    }
 }
 
 namespace RunCudaFunctions
@@ -183,5 +202,10 @@ namespace RunCudaFunctions
     void run_prime_points(dim3 blocks, dim3 threads, LatticeData lattice)
     {
         CudaFunctions::prime_points<<<blocks, threads>>>(lattice);
+    }
+
+    void run_generate_flow(dim3 blocks, dim3 threads, LatticeData lattice, FlowData* flowData)
+    {
+        CudaFunctions::generate_flow<<<blocks, threads>>>(lattice, flowData);
     }
 }
