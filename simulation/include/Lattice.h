@@ -8,7 +8,7 @@
 #include <utility>
 
 #include "Geometry.h"
-
+#include "FlowSurface.h"
 
 class LatticePoint;
 class Model;
@@ -46,6 +46,7 @@ public:
     void simulateStreaming();
     void simulateCollision();
     void simulateReflections();
+    void simulateFlow();
 
     void simulateLattice();
 
@@ -54,6 +55,8 @@ public:
     std::array<std::pair<double, int>, 27> distributeVector(Point_3 vector);
 
     void preProcessModel();
+
+    void setFlowData(FlowData* flowData);
 
 private:
     void createExtent();
@@ -65,6 +68,9 @@ private:
     cudaExtent latticeExtent;
 
     FluidData m_fluid;
+
+    FlowData* m_flowData; // Host Flow Data
+    FlowData* d_flowData; // Device Flow Data
 
     LatticeData m_dataPackage;
 

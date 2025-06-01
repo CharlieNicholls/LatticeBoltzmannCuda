@@ -11,6 +11,8 @@
 #include "device_launch_parameters.h"
 #include "Model.h"
 #include "Constants.h"
+#include "FlowSurface.h"
+#include "FlowCriterion.cuh"
 
 TEST(CalculationsTest, TestStreaming)
 {
@@ -139,6 +141,86 @@ TEST(CalculationsTest, TestReflections)
     EXPECT_NEAR(latticeArray[point_at_coords(2, 2, 2)].particle_distribution[26], 0.291477, 1e-6);
 
     EXPECT_NEAR(latticeArray[point_at_coords(1, 1, 1)].particle_distribution[1], 0.0, 1e-6);
+}
+
+TEST(CalculationsTest, TestFlowGeneration)
+{
+    dim3 threads(3, 3, 3);
+    dim3 blocks(1, 1, 1);
+
+    FluidData fluid(1.0, 1.0);
+
+    Lattice testLattice(3, 3, 3, blocks, threads, fluid, 0.5);
+
+    LatticeData latticeData_1(testLattice.getCudaDataPointer(), testLattice.getDimensions());
+
+    LatticePoint* latticeArray = new LatticePoint[3 * 3 * 3];
+
+    auto point_at_coords = [&](int x, int y, int z)
+    {
+        dim3 dims = testLattice.getDimensions();
+        return z + (y * dims.z) + (x * dims.z * dims.y);
+    };
+
+    testLattice.load_data(latticeArray);
+
+    RunCudaTestFunctions::run_prime_points(blocks, threads, latticeData_1);
+
+    LatticePoint flowRef;
+    flowRef.particle_distribution[0] = 1.0;
+
+    FlowData* inducedFlow = new FlowData(&FlowCriterion::ptestCriteria, flowRef);
+
+    testLattice.setFlowData(inducedFlow);
+    testLattice.simulateFlow();
+
+    latticeArray = testLattice.retrieve_data();
+
+    EXPECT_NEAR(latticeArray[point_at_coords(1, 1, 1)].particle_distribution[0], 1.0, 1e-6);
+    EXPECT_NEAR(latticeArray[point_at_coords(0, 0, 0)].particle_distribution[0], 0.0, 1e-6);
+}
+
+TEST(CalculationsTest, TestPlaneFlowGeneration)
+{
+    dim3 threads(3, 3, 3);
+    dim3 blocks(1, 1, 1);
+
+    FluidData fluid(1.0, 1.0);
+
+    Lattice testLattice(3, 3, 3, blocks, threads, fluid, 0.5);
+
+    LatticeData latticeData_1(testLattice.getCudaDataPointer(), testLattice.getDimensions());
+
+    LatticePoint* latticeArray = new LatticePoint[3 * 3 * 3];
+
+    auto point_at_coords = [&](int x, int y, int z)
+    {
+        dim3 dims = testLattice.getDimensions();
+        return z + (y * dims.z) + (x * dims.z * dims.y);
+    };
+
+    testLattice.load_data(latticeArray);
+
+    RunCudaTestFunctions::run_prime_points(blocks, threads, latticeData_1);
+
+    LatticePoint flowRef;
+    flowRef.particle_distribution[0] = 1.0;
+
+    FlowData* inducedFlow = new FlowData(&FlowCriterion::ptestPlaneCriteria, flowRef);
+
+    testLattice.setFlowData(inducedFlow);
+    testLattice.simulateFlow();
+
+    latticeArray = testLattice.retrieve_data();
+
+    for(int y = 0; y < 3; ++y)
+    {
+        for(int z = 0; z < 3; ++z)
+        {
+            EXPECT_NEAR(latticeArray[point_at_coords(0, y, z)].particle_distribution[0], 1.0, 1e-6);
+            EXPECT_NEAR(latticeArray[point_at_coords(1, y, z)].particle_distribution[0], 0.0, 1e-6);
+        }
+    }
 }
 
 int main(int argc, char **argv) {
