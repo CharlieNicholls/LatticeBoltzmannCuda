@@ -31,6 +31,13 @@ struct FluidData
     FluidData() : m_fluidDensity(1.0), m_characteristicTimescale(1.0) {};
 };
 
+struct ReflectionData
+{
+    double x = 0.0;
+    double y = 0.0;
+    double z = 0.0;
+};
+
 class Lattice
 {
 public:
@@ -39,6 +46,7 @@ public:
 
     void load_data(LatticePoint* lattice_array);
     LatticePoint* retrieve_data();
+    ReflectionData* retrieve_reflection_data();
 
     dim3 getDimensions() { return dim3(m_xResolution, m_yResolution, m_zResolution); };
     cudaPitchedPtr getCudaDataPointer() { return latticePtr; };
@@ -58,9 +66,12 @@ public:
 
     void setFlowData(FlowData* flowData);
 
+    void setReflectionData(ReflectionData* reflection);
+
 private:
     void createExtent();
     void allocateLatticeArray();
+    void allocateReflectionData();
 
     inline LatticePoint* getElementAtDirection(int& x, int& y, int& z, int& dir_index, LatticePoint* data_array);
 
@@ -69,8 +80,8 @@ private:
 
     FluidData m_fluid;
 
-    FlowData* m_flowData; // Host Flow Data
-    FlowData* d_flowData; // Device Flow Data
+    FlowData* m_flowData;
+    FlowData* d_flowData;
 
     LatticeData m_dataPackage;
 
@@ -84,4 +95,7 @@ private:
 
     dim3 m_threads;
     dim3 m_blocks;
+
+    ReflectionData* m_reflectionData = nullptr;
+    ReflectionData* d_reflectionData;
 };

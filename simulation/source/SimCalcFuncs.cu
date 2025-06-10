@@ -131,11 +131,12 @@ namespace CudaFunctions
         }
     }
 
-    __global__ void calculate_reflections(LatticeData lattice, LatticeData templattice)
+    __global__ void calculate_reflections(LatticeData lattice, LatticeData templattice, ReflectionData* reflection = nullptr)
     {
         LatticePoint* current_point = get_lattice_point(lattice);
 
         constexpr int directions[27][3] = {{0, 0, 0}, {-1, 0, 0}, {0, -1, 0}, {0, 0, -1}, {0, 0, 1}, {0, 1, 0}, {1, 0, 0}, {-1, -1, 0}, {-1, 0, -1}, {-1, 0, 1}, {-1, 1, 0}, {0, -1, -1}, {0, -1, 1}, {0, 1, -1}, {0, 1, 1}, {1, -1, 0}, {1, 0, -1}, {1, 0, 1}, {1, 1, 0}, {-1, -1, -1}, {-1, -1, 1}, {-1, 1, -1}, {-1, 1, 1}, {1, -1, -1}, {1, -1, 1}, {1, 1, -1}, {1, 1, 1}};
+        constexpr double split[27] = {0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0};
 
         if(current_point->isReflected)
         {
@@ -153,6 +154,13 @@ namespace CudaFunctions
                 if(neighbour != nullptr)
                 {
                     neighbour->particle_distribution[reflection_direction] += current_point->particle_distribution[i/3] * current_point->reflection_weight[i];
+
+                    if(reflection != nullptr)
+                    {
+                        reflection->x += current_point->particle_distribution[i/3] * current_point->reflection_weight[i] * directions[reflection_direction][0] * split[reflection_direction];
+                        reflection->y += current_point->particle_distribution[i/3] * current_point->reflection_weight[i] * directions[reflection_direction][1] * split[reflection_direction];
+                        reflection->z += current_point->particle_distribution[i/3] * current_point->reflection_weight[i] * directions[reflection_direction][2] * split[reflection_direction];
+                    }
                 }
             }
 
@@ -197,6 +205,11 @@ namespace RunCudaFunctions
     void run_calculate_reflections(dim3 blocks, dim3 threads, LatticeData lattice, LatticeData templattice)
     {
         CudaFunctions::calculate_reflections<<<blocks, threads>>>(lattice, templattice);
+    }
+
+    void run_calculate_reflections_data(dim3 blocks, dim3 threads, LatticeData lattice, LatticeData templattice, ReflectionData* reflection)
+    {
+        CudaFunctions::calculate_reflections<<<blocks, threads>>>(lattice, templattice, reflection);
     }
 
     void run_prime_points(dim3 blocks, dim3 threads, LatticeData lattice)

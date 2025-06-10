@@ -18,6 +18,8 @@ namespace RunCudaFunctions
 
     void run_calculate_reflections(dim3 blocks, dim3 threads, LatticeData lattice, LatticeData templattice);
 
+    void run_calculate_reflections_data(dim3 blocks, dim3 threads, LatticeData lattice, LatticeData templattice, ReflectionData* relfections);
+
     void run_prime_points(dim3 blocks, dim3 threads, LatticeData lattice);
 
     void run_generate_flow(dim3 blocks, dim3 threads, LatticeData lattice, FlowData* flowData);

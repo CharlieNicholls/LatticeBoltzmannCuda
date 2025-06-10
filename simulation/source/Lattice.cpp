@@ -50,6 +50,18 @@ void Lattice::allocateLatticeArray()
     cudaMalloc3D(&latticePtr, latticeExtent);
 }
 
+void Lattice::allocateReflectionData()
+{
+    cudaMalloc(&d_reflectionData, sizeof(ReflectionData));
+}
+
+void Lattice::setReflectionData(ReflectionData* reflection)
+{
+    m_reflectionData = reflection;
+    allocateReflectionData();
+    cudaMemcpy(d_reflectionData, m_reflectionData, sizeof(ReflectionData), cudaMemcpyHostToDevice);
+}
+
 void Lattice::load_data(LatticePoint* lattice_array)
 {
     cudaMemcpy3DParms params = {0};
@@ -146,7 +158,14 @@ void Lattice::simulateReflections()
         return;
     }
 
-    RunCudaFunctions::run_calculate_reflections(m_blocks, m_threads, m_dataPackage, temporary_data);
+    if(m_reflectionData != nullptr)
+    {
+        RunCudaFunctions::run_calculate_reflections_data(m_blocks, m_threads, m_dataPackage, temporary_data, d_reflectionData);
+    }
+    else
+    {
+        RunCudaFunctions::run_calculate_reflections(m_blocks, m_threads, m_dataPackage, temporary_data);
+    }
 
     err = cudaFree(latticePtr.ptr);
     if (err != cudaSuccess) {
@@ -366,6 +385,13 @@ void Lattice::setFlowData(FlowData* flowData)
 
     cudaMalloc(&d_flowData, sizeof(FlowData));
     cudaMemcpy(d_flowData, m_flowData, sizeof(FlowData), cudaMemcpyHostToDevice);
+}
+
+ReflectionData* Lattice::retrieve_reflection_data()
+{
+    cudaMemcpy(m_reflectionData, d_reflectionData, sizeof(ReflectionData), cudaMemcpyDeviceToHost);
+
+    return m_reflectionData;
 }
 
 inline LatticePoint* Lattice::getElementAtDirection(int& x, int& y, int& z, int& dir_index, LatticePoint* data_array)
