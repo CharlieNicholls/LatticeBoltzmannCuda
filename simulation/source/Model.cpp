@@ -36,6 +36,11 @@ void Model::importModel(std::string filename)
     }
 
     lazyAabbTreeConstruction();
+
+    if(!isModelClosed())
+    {
+        meshValid = false;
+    }
 }
 
 bool Model::isModelClosed()
@@ -45,14 +50,8 @@ bool Model::isModelClosed()
 
 bool Model::isPointInsideModel(CGAL::Simple_cartesian<double>::Point_3 point)
 {
-    if(!isModelClosed())
+    if(!meshValid)
     {
-        return false;
-    }
-
-    if(!CGAL::is_triangle_mesh(modelMesh))
-    {
-        meshValid = false;
         return false;
     }
 
