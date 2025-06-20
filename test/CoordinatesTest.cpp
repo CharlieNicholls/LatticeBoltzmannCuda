@@ -31,6 +31,60 @@ TEST(CoordinatesTest, TestLoadAndRetrieve)
     EXPECT_NEAR(tempLatticeArray[0].particle_distribution[5], latticeArray[0].particle_distribution[5], 1e-9);
 }
 
+TEST(CoordinatesTest, TestCoordsMatch)
+{
+    dim3 threads(10, 10, 10);
+    dim3 blocks(10, 10, 10);
+
+    FluidData fluid(1.0, 1.0);
+
+    Lattice testLattice(100, 100, 100, blocks, threads, fluid, 0.1);
+
+    LatticePoint* latticeArray = new LatticePoint[100 * 100 * 100];
+
+    int counter = 0;
+
+    for(int x = 0; x < 100; ++x)
+    {
+        for(int y = 0; y < 100; ++y)
+        {
+            for(int z = 0; z < 100; ++z)
+            {
+                LatticePoint curr_point;
+
+                curr_point.x = x;
+                curr_point.y = y;
+                curr_point.z = z;
+
+                latticeArray[counter] = curr_point;
+
+                ++counter;
+            }
+        }
+    }
+
+    testLattice.load_data(latticeArray);
+
+    LatticeData data = LatticeData(testLattice.getCudaDataPointer(), testLattice.getDimensions());
+    
+    //RunCudaTestFunctions::run_prime_points(threads, blocks, data);
+
+    latticeArray = testLattice.retrieve_data();
+
+    for(int x = 0; x < 100; ++x)
+    {
+        for(int y = 0; y < 100; ++y)
+        {
+            for(int z = 0; z < 100; ++z)
+            {
+                EXPECT_EQ(latticeArray[z + (y * 100) + (x * 10000)].x, x);
+                EXPECT_EQ(latticeArray[z + (y * 100) + (x * 10000)].y, y);
+                EXPECT_EQ(latticeArray[z + (y * 100) + (x * 10000)].z, z);
+            }
+        }
+    }
+}
+
 TEST(CoordinatesTest, TestCoordinatesOnCopy)
 {
     dim3 threads(10, 10, 10);

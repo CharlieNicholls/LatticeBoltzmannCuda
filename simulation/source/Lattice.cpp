@@ -57,6 +57,11 @@ void Lattice::allocateReflectionData()
 
 void Lattice::setReflectionData(ReflectionData* reflection)
 {
+    if(d_reflectionData)
+    {
+        cudaFree(d_reflectionData);
+    }
+
     m_reflectionData = reflection;
     allocateReflectionData();
     cudaMemcpy(d_reflectionData, m_reflectionData, sizeof(ReflectionData), cudaMemcpyHostToDevice);
@@ -66,9 +71,6 @@ void Lattice::load_data(LatticePoint* lattice_array)
 {
     cudaMemcpy3DParms params = {0};
     params.srcPtr = make_cudaPitchedPtr(lattice_array, sizeof(LatticePoint) * m_xResolution, m_xResolution, m_yResolution);;
-    params.srcPtr.xsize = sizeof(LatticePoint) * m_xResolution;
-    params.srcPtr.ysize = m_yResolution;
-    params.srcPtr.pitch = sizeof(LatticePoint) * m_xResolution;
     params.dstPtr = latticePtr;
     params.extent = latticeExtent;
     params.kind = cudaMemcpyHostToDevice;
@@ -85,9 +87,6 @@ LatticePoint* Lattice::retrieve_data()
 
     cudaMemcpy3DParms params = {0};
     params.srcPtr = latticePtr;
-    params.dstPtr.xsize = sizeof(LatticePoint) * m_xResolution;
-    params.dstPtr.ysize = m_yResolution;
-    params.dstPtr.pitch = sizeof(LatticePoint) * m_xResolution;
     params.dstPtr = make_cudaPitchedPtr(lattice_array, sizeof(LatticePoint) * m_xResolution, m_xResolution, m_yResolution);
     params.extent = latticeExtent;
     params.kind = cudaMemcpyDeviceToHost;
@@ -112,6 +111,8 @@ LatticePoint* Lattice::retrieve_data()
 
 void Lattice::simulateStreaming()
 {
+    cudaDeviceSynchronize();
+
     cudaPitchedPtr temporaryLatticePtr;
 
     cudaError_t err = cudaMalloc3D(&temporaryLatticePtr, latticeExtent);
@@ -119,14 +120,30 @@ void Lattice::simulateStreaming()
         printf("Lattice::simulateStreaming malloc: %s\n", cudaGetErrorString(err));
     }
 
+    cudaMemcpy3DParms params = {0};
+    params.srcPtr = m_dataPackage.latticePtr;
+    params.dstPtr = temporaryLatticePtr;
+    params.extent = latticeExtent;
+    params.kind = cudaMemcpyDeviceToDevice;
+
+    err = cudaMemcpy3D(&params);
+    if (err != cudaSuccess) {
+        printf("Lattice::simulateReflections memcpy failed: %s\n", cudaGetErrorString(err));
+        return;
+    }
+
     LatticeData temporary_data(temporaryLatticePtr, getDimensions());
 
     RunCudaFunctions::run_calculate_streaming(m_blocks, m_threads, m_dataPackage, temporary_data);
+
+    cudaDeviceSynchronize();
 
     err = cudaFree(latticePtr.ptr);
     if (err != cudaSuccess) {
         printf("Lattice::simulateStreaming free: %s\n", cudaGetErrorString(err));
     }
+
+    cudaDeviceSynchronize();
 
     latticePtr = temporaryLatticePtr;
 
@@ -135,14 +152,21 @@ void Lattice::simulateStreaming()
 
 void Lattice::simulateCollision()
 {
+    cudaDeviceSynchronize();
+
     RunCudaFunctions::run_calculate_collision(m_blocks, m_threads, m_dataPackage, m_fluid.m_characteristicTimescale);
 }
 
 void Lattice::simulateReflections()
 {
+    cudaDeviceSynchronize();
+
     cudaPitchedPtr temporaryLatticePtr;
 
-    cudaMalloc3D(&temporaryLatticePtr, latticeExtent);
+    cudaError_t err = cudaMalloc3D(&temporaryLatticePtr, latticeExtent);
+    if (err != cudaSuccess) {
+        printf("Lattice::simulateReflections malloc: %s\n", cudaGetErrorString(err));
+    }
 
     LatticeData temporary_data(temporaryLatticePtr, getDimensions());
 
@@ -152,11 +176,13 @@ void Lattice::simulateReflections()
     params.extent = latticeExtent;
     params.kind = cudaMemcpyDeviceToDevice;
 
-    cudaError_t err = cudaMemcpy3D(&params);
+    err = cudaMemcpy3D(&params);
     if (err != cudaSuccess) {
         printf("Lattice::simulateReflections memcpy failed: %s\n", cudaGetErrorString(err));
         return;
     }
+
+    cudaDeviceSynchronize();
 
     if(m_reflectionData != nullptr)
     {
@@ -166,6 +192,8 @@ void Lattice::simulateReflections()
     {
         RunCudaFunctions::run_calculate_reflections(m_blocks, m_threads, m_dataPackage, temporary_data);
     }
+
+    cudaDeviceSynchronize();
 
     err = cudaFree(latticePtr.ptr);
     if (err != cudaSuccess) {
@@ -180,6 +208,8 @@ void Lattice::simulateReflections()
 
 void Lattice::simulateFlow()
 {
+    cudaDeviceSynchronize();
+
     if(m_flowData != nullptr)
     {
         RunCudaFunctions::run_generate_flow(m_blocks, m_threads, m_dataPackage, d_flowData);

@@ -190,8 +190,8 @@ TEST(CalculationsTest, TestReflectionsData)
     reflection = testLattice.retrieve_reflection_data();
 
     EXPECT_NEAR(reflection->x, 0.28086, 1e-6);
-    EXPECT_NEAR(reflection->y, 0.097159, 1e-6);
-    EXPECT_NEAR(reflection->z, 0.621981, 1e-6);
+    EXPECT_NEAR(reflection->y, -0.194318, 1e-6);
+    EXPECT_NEAR(reflection->z, 0.648261, 1e-6);
 }
 
 TEST(CalculationsTest, TestFlowGeneration)
