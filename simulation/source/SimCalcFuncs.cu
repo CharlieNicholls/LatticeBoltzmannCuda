@@ -11,17 +11,18 @@
 
 namespace CudaFunctions
 {
-    __device__ double atomicAdd(double* address, double val)
+    __device__ int getReflectionDirection(LatticePoint* point, const int index)
     {
-        unsigned long long int* address_as_ull = (unsigned long long int*)address;
+        constexpr unsigned int clearLookup[6] = {0x1F, 0x3E0, 0x7C00, 0xF8000, 0x1F00000, 0x3E000000};
 
-        unsigned long long int old = *address_as_ull, assumed;
+        int compressedIndex = index/6;
+        int compressedLoc = index % 6;
 
-        do{ assumed = old;
-            old = atomicCAS(address_as_ull, assumed,__double_as_longlong(val +__longlong_as_double(assumed)));
-        } while (assumed != old);
+        int result = point->reflection_directions[compressedIndex] & clearLookup[compressedLoc];
 
-        return __longlong_as_double(old);
+        result = result >> compressedLoc * 5;
+        
+        return result;
     }
 
     __device__ LatticePoint* get_lattice_at_coords(LatticeData lattice, int x, int y, int z)
@@ -71,69 +72,6 @@ namespace CudaFunctions
         current_point->z = blockDim.z * blockIdx.z + threadIdx.z;
     }
 
-    __global__ void calculate_equilibrium(LatticeData lattice)
-    {
-        LatticePoint* current_point = get_lattice_point(lattice);
-
-        double density = 0.0;
-        double ux = 0.0;
-        double uy = 0.0;
-        double uz = 0.0;
-
-        constexpr int directions[27][3] = {{0, 0, 0}, {-1, 0, 0}, {0, -1, 0}, {0, 0, -1}, {0, 0, 1}, {0, 1, 0}, {1, 0, 0}, {-1, -1, 0}, {-1, 0, -1}, {-1, 0, 1}, {-1, 1, 0}, {0, -1, -1}, {0, -1, 1}, {0, 1, -1}, {0, 1, 1}, {1, -1, 0}, {1, 0, -1}, {1, 0, 1}, {1, 1, 0}, {-1, -1, -1}, {-1, -1, 1}, {-1, 1, -1}, {-1, 1, 1}, {1, -1, -1}, {1, -1, 1}, {1, 1, -1}, {1, 1, 1}};
-        constexpr double split[27] = {0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0};
-
-        for(int i = 0; i < 27; ++i)
-        {
-            density += current_point->particle_distribution[i];
-            ux += current_point->particle_distribution[i] * directions[i][0] * split[i];
-            uy += current_point->particle_distribution[i] * directions[i][1] * split[i];
-            uz += current_point->particle_distribution[i] * directions[i][2] * split[i];
-        }
-        
-        if(density == 0.0)
-        {
-            for(int i = 0; i < 27; ++i)
-            {
-                current_point->equilibrium[i] = 0.0;
-            }
-
-            return;
-        }
-
-        ux /= density;
-        uy /= density;
-        uz /= density;
-
-        double sq = (1.5 * ((ux * ux) + (uy * uy) + (uz * uz)));
-
-        {   
-            double common_term = ((directions[0][0] * ux) + (directions[0][1] * uy) + (directions[0][2] * uz));
-            current_point->equilibrium[0] = (8.0/27.0) * density * (1 + (3.0 * common_term) + (4.5 * common_term * common_term) - sq);
-        }
-
-        for(int i = 1; i < 7; ++i)
-        {
-            double common_term = ((directions[i][0] * ux) + (directions[i][1] * uy) + (directions[i][2] * uz));
-
-            current_point->equilibrium[i] = (2.0/27.0) * density * (1 + (3.0 * common_term) + (4.5 * common_term * common_term) - sq);
-        }
-
-        for(int i = 7; i < 19; ++i)
-        {
-            double common_term = ((directions[i][0] * ux) + (directions[i][1] * uy) + (directions[i][2] * uz));
-
-            current_point->equilibrium[i] = (1.0/54.0) * density * (1 + (3.0 * common_term) + (4.5 * common_term * common_term) - sq);
-        }
-
-        for(int i = 19; i < 27; ++i)
-        {
-            double common_term = ((directions[i][0] * ux) + (directions[i][1] * uy) + (directions[i][2] * uz));
-
-            current_point->equilibrium[i] = (1.0/216.0) * density * (1 + (3.0 * common_term) + (4.5 * common_term * common_term) - sq);
-        }
-    }
-
     __global__ void calculate_streaming(LatticeData lattice, LatticeData templattice)
     {
         LatticePoint* current_point = get_lattice_point(templattice, true);
@@ -156,20 +94,66 @@ namespace CudaFunctions
         }
     }
 
-    __global__ void calculate_collision(LatticeData lattice, double timescale)
+    __global__ void calculate_collision(LatticeData lattice, float timescale)
     {
         LatticePoint* current_point = get_lattice_point(lattice);
 
+        float density = 0.0;
+        float ux = 0.0;
+        float uy = 0.0;
+        float uz = 0.0;
+
+        constexpr int directions[27][3] = {{0, 0, 0}, {-1, 0, 0}, {0, -1, 0}, {0, 0, -1}, {0, 0, 1}, {0, 1, 0}, {1, 0, 0}, {-1, -1, 0}, {-1, 0, -1}, {-1, 0, 1}, {-1, 1, 0}, {0, -1, -1}, {0, -1, 1}, {0, 1, -1}, {0, 1, 1}, {1, -1, 0}, {1, 0, -1}, {1, 0, 1}, {1, 1, 0}, {-1, -1, -1}, {-1, -1, 1}, {-1, 1, -1}, {-1, 1, 1}, {1, -1, -1}, {1, -1, 1}, {1, 1, -1}, {1, 1, 1}};
+        constexpr float split[27] = {0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0};
+
         for(int i = 0; i < 27; ++i)
         {
-            double adder = (current_point->equilibrium[i] - current_point->particle_distribution[i])/timescale;
+            density += current_point->particle_distribution[i];
+            ux += current_point->particle_distribution[i] * directions[i][0] * split[i];
+            uy += current_point->particle_distribution[i] * directions[i][1] * split[i];
+            uz += current_point->particle_distribution[i] * directions[i][2] * split[i];
+        }
+        
+        if(density != 0.0)
+        {
+            ux /= density;
+            uy /= density;
+            uz /= density;
+        }
 
-            if(adder > 0.5)
-            {
-                printf("Large collsion value change detected: %d, %d, %d, %d, %f, %f", current_point->x, current_point->y, current_point->z, i, current_point->particle_distribution[i], current_point->equilibrium[i]);
-            }
+        {   
+            float common_term = ((directions[0][0] * ux) + (directions[0][1] * uy) + (directions[0][2] * uz));
 
-            atomicAdd(&(current_point->particle_distribution[i]), (current_point->equilibrium[i] - current_point->particle_distribution[i])/timescale);
+            float eq = (8.0/27.0) * density * (1 + (3.0 * common_term) + (4.5 * common_term * common_term) - (1.5 * ((ux * ux) + (uy * uy) + (uz * uz))));
+
+            atomicAdd(&(current_point->particle_distribution[0]), (eq - current_point->particle_distribution[0])/timescale);
+        }
+
+        for(int i = 1; i < 7; ++i)
+        {
+            float common_term = ((directions[i][0] * ux) + (directions[i][1] * uy) + (directions[i][2] * uz));
+
+            float eq = (2.0/27.0) * density * (1 + (3.0 * common_term) + (4.5 * common_term * common_term) - (1.5 * ((ux * ux) + (uy * uy) + (uz * uz))));
+
+            atomicAdd(&(current_point->particle_distribution[i]), (eq - current_point->particle_distribution[i])/timescale);
+        }
+
+        for(int i = 7; i < 19; ++i)
+        {
+            float common_term = ((directions[i][0] * ux) + (directions[i][1] * uy) + (directions[i][2] * uz));
+
+            float eq = (1.0/54.0) * density * (1 + (3.0 * common_term) + (4.5 * common_term * common_term) - (1.5 * ((ux * ux) + (uy * uy) + (uz * uz))));
+
+            atomicAdd(&(current_point->particle_distribution[i]), (eq - current_point->particle_distribution[i])/timescale);
+        }
+
+        for(int i = 19; i < 27; ++i)
+        {
+            float common_term = ((directions[i][0] * ux) + (directions[i][1] * uy) + (directions[i][2] * uz));
+
+            float eq = (1.0/216.0) * density * (1 + (3.0 * common_term) + (4.5 * common_term * common_term) - (1.5 * ((ux * ux) + (uy * uy) + (uz * uz))));
+
+            atomicAdd(&(current_point->particle_distribution[i]), (eq - current_point->particle_distribution[i])/timescale);
         }
     }
 
@@ -178,13 +162,13 @@ namespace CudaFunctions
         LatticePoint* current_point = get_lattice_point(lattice);
 
         constexpr int directions[27][3] = {{0, 0, 0}, {-1, 0, 0}, {0, -1, 0}, {0, 0, -1}, {0, 0, 1}, {0, 1, 0}, {1, 0, 0}, {-1, -1, 0}, {-1, 0, -1}, {-1, 0, 1}, {-1, 1, 0}, {0, -1, -1}, {0, -1, 1}, {0, 1, -1}, {0, 1, 1}, {1, -1, 0}, {1, 0, -1}, {1, 0, 1}, {1, 1, 0}, {-1, -1, -1}, {-1, -1, 1}, {-1, 1, -1}, {-1, 1, 1}, {1, -1, -1}, {1, -1, 1}, {1, 1, -1}, {1, 1, 1}};
-        constexpr double split[27] = {0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0};
+        constexpr float split[27] = {0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0};
 
         if(current_point->isReflected)
         {
             for(int i = 1; i < 81; ++i)
             {
-                int reflection_direction = current_point->reflection_directions[i];
+                int reflection_direction = getReflectionDirection(current_point, i);
 
                 if(reflection_direction == 0)
                 {
@@ -243,10 +227,8 @@ namespace RunCudaFunctions
         CudaFunctions::calculate_streaming<<<blocks, threads>>>(lattice, templattice);
     }
 
-    void run_calculate_collision(dim3 blocks, dim3 threads, LatticeData lattice, double timescale)
+    void run_calculate_collision(dim3 blocks, dim3 threads, LatticeData lattice, float timescale)
     {
-        CudaFunctions::calculate_equilibrium<<<blocks, threads>>>(lattice);
-
         CudaFunctions::calculate_collision<<<blocks, threads>>>(lattice, timescale);
     }
 

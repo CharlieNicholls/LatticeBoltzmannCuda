@@ -7,9 +7,9 @@
 //Will need to create solution for geometry data structures
 struct Point_3
 {
-    double x, y, z;
+    float x, y, z;
 
-    Point_3(double x_i, double y_i, double z_i) : x(x_i), y(y_i), z(z_i) {};
+    Point_3(float x_i, float y_i, float z_i) : x(x_i), y(y_i), z(z_i) {};
 
     bool operator==(const Point_3& a) const
     {
@@ -20,7 +20,7 @@ struct Point_3
 
     void normaliseVector()
     {
-        double norm = sqrt((x * x) + (y * y) + (z * z));
+        float norm = sqrt((x * x) + (y * y) + (z * z));
 
         x /= norm;
         y /= norm;
@@ -28,5 +28,5 @@ struct Point_3
     }
 };
 
-Point_3 rotateVectorAroundAxis(Point_3 axis, Point_3 vector, double angle);
+Point_3 rotateVectorAroundAxis(Point_3 axis, Point_3 vector, float angle);
 #endif
