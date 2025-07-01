@@ -28,7 +28,7 @@ TEST(CoordinatesTest, TestLoadAndRetrieve)
 
     LatticePoint* tempLatticeArray = testLattice.retrieve_data();
 
-    EXPECT_NEAR(tempLatticeArray[0].particle_distribution[5], latticeArray[0].particle_distribution[5], 1e-9);
+    EXPECT_NEAR(tempLatticeArray[0].particle_distribution[5], latticeArray[0].particle_distribution[5], 1e-6);
 }
 
 TEST(CoordinatesTest, TestCoordsMatch)
@@ -179,11 +179,11 @@ TEST(CoordinatesTest, TestDistributeVector)
 
     Point_3 vector(1.0, 0.1, 0.1);
 
-    std::array<std::pair<double, int>, 3> expected{std::pair<double, int>{0.4134132615337746, 6}, std::pair<double, int>{0.2932933692331128, 18}, std::pair<double, int>{0.2932933692331128, 17}};
+    std::array<std::pair<float, int>, 3> expected{std::pair<float, int>{0.4134132615337746, 6}, std::pair<float, int>{0.2932933692331128, 18}, std::pair<float, int>{0.2932933692331128, 17}};
 
-    std::array<std::pair<double, int>, 27> result = testLattice.distributeVector(vector);
+    std::array<std::pair<float, int>, 27> result = testLattice.distributeVector(vector);
 
-    double norm = result[0].first + result[1].first + result[2].first;
+    float norm = result[0].first + result[1].first + result[2].first;
 
     result[0].first /= norm;
     result[1].first /= norm;
@@ -223,9 +223,9 @@ TEST(CoordinatesTest, TestReflection)
     EXPECT_NEAR(tempLatticeArray[13].reflection_weight[1*3 + 0], 0.367402, 1e-6);
     EXPECT_NEAR(tempLatticeArray[13].reflection_weight[1*3 + 1], 0.341121, 1e-6);
     EXPECT_NEAR(tempLatticeArray[13].reflection_weight[1*3 + 2], 0.291477, 1e-6);
-    EXPECT_EQ(tempLatticeArray[13].reflection_directions[1*3 + 0], 17);
-    EXPECT_EQ(tempLatticeArray[13].reflection_directions[1*3 + 1], 4);
-    EXPECT_EQ(tempLatticeArray[13].reflection_directions[1*3 + 2], 26);
+    EXPECT_EQ(testLattice.getReflectionDirection(&tempLatticeArray[13], 3), 17);
+    EXPECT_EQ(testLattice.getReflectionDirection(&tempLatticeArray[13], 4), 4);
+    EXPECT_EQ(testLattice.getReflectionDirection(&tempLatticeArray[13], 5), 26);
 }
 
 int main()

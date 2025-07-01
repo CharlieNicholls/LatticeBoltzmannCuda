@@ -3,7 +3,7 @@
 
 namespace CONSTANTS
 {
-    extern const double GEOMETRIC_TOLERANCE;
+    extern const float GEOMETRIC_TOLERANCE;
 }
 
 #endif // CONSTANTS_H

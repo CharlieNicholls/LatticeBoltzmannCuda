@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <cassert>
 #include <gtest/gtest.h>
+#include <bitset>
 
 #include "Lattice.h"
 #include "LatticePoint.h"
@@ -13,6 +14,7 @@
 #include "Constants.h"
 #include "FlowSurface.h"
 #include "FlowCriterion.cuh"
+#include "Utils.h"
 
 TEST(CalculationsTest, TestStreaming)
 {
@@ -39,7 +41,7 @@ TEST(CalculationsTest, TestStreaming)
 
     latticeArray = testLattice.retrieve_data();
 
-    EXPECT_NEAR(latticeArray[1].particle_distribution[5], 2.0, 1e-9);
+    EXPECT_NEAR(latticeArray[1].particle_distribution[5], 2.0, 1e-6);
 }
 
 TEST(CalculationsTest, TestCollision)
@@ -67,9 +69,9 @@ TEST(CalculationsTest, TestCollision)
 
     latticeArray = testLattice.retrieve_data();
 
-    EXPECT_NEAR(latticeArray[0].particle_distribution[0], 0.592592593, 1e-9);
-    EXPECT_NEAR(latticeArray[0].particle_distribution[1], 0.148148148, 1e-9);
-    EXPECT_NEAR(latticeArray[0].particle_distribution[2], 0.148148148, 1e-9);
+    EXPECT_NEAR(latticeArray[0].particle_distribution[0], 0.592592593, 1e-6);
+    EXPECT_NEAR(latticeArray[0].particle_distribution[1], 0.148148148, 1e-6);
+    EXPECT_NEAR(latticeArray[0].particle_distribution[2], 0.148148148, 1e-6);
 }
 
 TEST(CalculationsTest, TestFull)
@@ -97,9 +99,9 @@ TEST(CalculationsTest, TestFull)
 
     latticeArray = testLattice.retrieve_data();
     
-    EXPECT_NEAR(latticeArray[1].particle_distribution[0], -0.296296296, 1e-9);
-    EXPECT_NEAR(latticeArray[1].particle_distribution[1], -0.074074074, 1e-9);
-    EXPECT_NEAR(latticeArray[1].particle_distribution[2], 0.148148148, 1e-9);
+    EXPECT_NEAR(latticeArray[1].particle_distribution[0], -0.296296296, 1e-6);
+    EXPECT_NEAR(latticeArray[1].particle_distribution[1], -0.074074074, 1e-6);
+    EXPECT_NEAR(latticeArray[1].particle_distribution[2], 0.148148148, 1e-6);
 }
 
 TEST(CalculationsTest, TestReflections)
@@ -272,6 +274,13 @@ TEST(CalculationsTest, TestPlaneFlowGeneration)
             EXPECT_NEAR(latticeArray[point_at_coords(1, y, z)].particle_distribution[0], 0.0, 1e-6);
         }
     }
+}
+
+TEST(CalculationsTest, CompressionTest)
+{
+    int test_array[6] = {1, 2, 3, 4, 5, 6};
+
+    EXPECT_EQ(Utils::compressInts(test_array, 6, 5), 35754150);
 }
 
 int main(int argc, char **argv) {
