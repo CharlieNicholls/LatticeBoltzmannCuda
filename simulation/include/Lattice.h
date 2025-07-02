@@ -10,7 +10,6 @@
 #include "Geometry.h"
 #include "FlowSurface.h"
 
-class LatticePoint;
 class Model;
 
 struct LatticeData
@@ -101,4 +100,7 @@ private:
 
     ReflectionData* m_reflectionData = nullptr;
     ReflectionData* d_reflectionData;
+
+    std::vector<ReflectionValues> m_reflections;
+    ReflectionValues* d_reflections;
 };

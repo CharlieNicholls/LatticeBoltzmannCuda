@@ -331,6 +331,8 @@ void Lattice::preProcessModel()
 
     LatticePoint* data_array = retrieve_data();
 
+    std::vector<LatticePoint*> elements_that_reflect;
+
     for(int x = 0; x < m_xResolution; ++x)
     {
         for(int y = 0; y < m_yResolution; ++y)
@@ -362,12 +364,31 @@ void Lattice::preProcessModel()
                             
                             int counter = 0;
 
+                            float norm = 0.0;
+
                             for(int i = 0; i < 27; ++i)
                             {
                                 if(!getElementAtDirection(x, y, z, resulting_dist[i].second, data_array)->isInternal)
                                 {
+                                    if(curr_element->reflections == nullptr)
+                                    {
+                                        elements_that_reflect.push_back(curr_element);
+                                        ReflectionValues values;
+
+                                        memset(&(values.reflection_directions), 0, sizeof(int) * 14);
+                                        memset(&(values.reflection_weight), 0, sizeof(float) * 81);
+
+                                        m_reflections.push_back(values);
+
+                                        curr_element->reflections = &m_reflections.back();
+
+                                        std::cout << m_reflections.size() << std::endl;
+                                    }
+
                                     setReflectionDirection(curr_element, inverse_directions[dir_index] * 3 + counter, resulting_dist[i].second);
-                                    curr_element->reflection_weight[inverse_directions[dir_index] * 3 + counter] = resulting_dist[i].first;
+                                    curr_element->reflections->reflection_weight[inverse_directions[dir_index] * 3 + counter] = resulting_dist[i].first;
+
+                                    norm += resulting_dist[i].first;
 
                                     curr_element->isReflected = true;
 
@@ -379,24 +400,15 @@ void Lattice::preProcessModel()
                                     break;
                                 }
                             }
-                        }
-                        float norm = 0.0;
 
-                        for(int i = 0; i < 3; ++i)
-                        {
-                            if(getReflectionDirection(curr_element, inverse_directions[dir_index] * 3 + i) != 0)
+                            if(norm != 0.0)
                             {
-                                norm += curr_element->reflection_weight[inverse_directions[dir_index] * 3 + i];
-                            }
-                        }
-
-                        if(norm != 0.0)
-                        {
-                            for(int i = 0; i < 3; ++i)
-                            {
-                                if(getReflectionDirection(curr_element, inverse_directions[dir_index] * 3 + i) != 0)
+                                for(int i = 0; i < 3; ++i)
                                 {
-                                    curr_element->reflection_weight[inverse_directions[dir_index] * 3 + i] /= norm;
+                                    if(getReflectionDirection(curr_element, inverse_directions[dir_index] * 3 + i) != 0)
+                                    {
+                                        curr_element->reflections->reflection_weight[inverse_directions[dir_index] * 3 + i] /= norm;
+                                    }
                                 }
                             }
                         }
@@ -404,6 +416,14 @@ void Lattice::preProcessModel()
                 }
             }
         }
+    }
+
+    cudaMalloc(&d_reflections, m_reflections.size() * sizeof(ReflectionValues));
+    cudaMemcpy(d_reflections, m_reflections.data(), m_reflections.size() * sizeof(ReflectionValues), cudaMemcpyHostToDevice);
+
+    for(int i = 0; i < elements_that_reflect.size(); ++i)
+    {
+        elements_that_reflect[i]->d_reflections = d_reflections + i;
     }
 
     load_data(data_array);
@@ -444,8 +464,8 @@ void Lattice::setReflectionDirection(LatticePoint* point, const int index, const
 
     shiftedValue = shiftedValue << 5 * compressedLoc;
 
-    point->reflection_directions[compressedIndex] = point->reflection_directions[compressedIndex] & clearLookup[compressedLoc];
-    point->reflection_directions[compressedIndex] = point->reflection_directions[compressedIndex] | shiftedValue;
+    point->reflections->reflection_directions[compressedIndex] = point->reflections->reflection_directions[compressedIndex] & clearLookup[compressedLoc];
+    point->reflections->reflection_directions[compressedIndex] = point->reflections->reflection_directions[compressedIndex] | shiftedValue;
 }
 
 int Lattice::getReflectionDirection(LatticePoint* point, const int index)
@@ -455,7 +475,7 @@ int Lattice::getReflectionDirection(LatticePoint* point, const int index)
     int compressedIndex = index/6;
     int compressedLoc = index % 6;
 
-    int result = point->reflection_directions[compressedIndex] & clearLookup[compressedLoc];
+    int result = point->reflections->reflection_directions[compressedIndex] & clearLookup[compressedLoc];
 
     result = result >> compressedLoc * 5;
     

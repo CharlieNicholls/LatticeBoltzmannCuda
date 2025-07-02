@@ -220,9 +220,9 @@ TEST(CoordinatesTest, TestReflection)
 
     LatticePoint* tempLatticeArray = testLattice.retrieve_data();
 
-    EXPECT_NEAR(tempLatticeArray[13].reflection_weight[1*3 + 0], 0.367402, 1e-6);
-    EXPECT_NEAR(tempLatticeArray[13].reflection_weight[1*3 + 1], 0.341121, 1e-6);
-    EXPECT_NEAR(tempLatticeArray[13].reflection_weight[1*3 + 2], 0.291477, 1e-6);
+    EXPECT_NEAR(tempLatticeArray[13].reflections->reflection_weight[1*3 + 0], 0.367402, 1e-6);
+    EXPECT_NEAR(tempLatticeArray[13].reflections->reflection_weight[1*3 + 1], 0.341121, 1e-6);
+    EXPECT_NEAR(tempLatticeArray[13].reflections->reflection_weight[1*3 + 2], 0.291477, 1e-6);
     EXPECT_EQ(testLattice.getReflectionDirection(&tempLatticeArray[13], 3), 17);
     EXPECT_EQ(testLattice.getReflectionDirection(&tempLatticeArray[13], 4), 4);
     EXPECT_EQ(testLattice.getReflectionDirection(&tempLatticeArray[13], 5), 26);
