@@ -56,14 +56,6 @@ int main(int argc, char *argv[])
         {
             data[x].particle_distribution[i] = flowRef.particle_distribution[i];
         }
-        for(int i = 0; i < 81; ++i)
-        {
-            data[x].reflection_weight[i] = 0.0;
-        }
-        for(int i = 0; i < 14; ++i)
-        {
-            data[x].reflection_directions[i] = 0;
-        }
     }
 
     userLattice.load_data(data);

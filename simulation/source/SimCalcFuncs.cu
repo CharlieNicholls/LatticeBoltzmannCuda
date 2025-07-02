@@ -18,7 +18,7 @@ namespace CudaFunctions
         int compressedIndex = index/6;
         int compressedLoc = index % 6;
 
-        int result = point->reflection_directions[compressedIndex] & clearLookup[compressedLoc];
+        int result = point->d_reflections->reflection_directions[compressedIndex] & clearLookup[compressedLoc];
 
         result = result >> compressedLoc * 5;
         
@@ -179,13 +179,13 @@ namespace CudaFunctions
 
                 if(neighbour != nullptr)
                 {
-                    atomicAdd(&(neighbour->particle_distribution[reflection_direction]), current_point->particle_distribution[i/3] * current_point->reflection_weight[i]);
+                    atomicAdd(&(neighbour->particle_distribution[reflection_direction]), current_point->particle_distribution[i/3] * current_point->d_reflections->reflection_weight[i]);
 
                     if(reflection != nullptr)
                     {
-                        atomicAdd(&(reflection->x), (current_point->particle_distribution[i/3] * current_point->reflection_weight[i]) * ((directions[reflection_direction][0] * split[reflection_direction]) - (directions[i][0] * split[i])));
-                        atomicAdd(&(reflection->y), (current_point->particle_distribution[i/3] * current_point->reflection_weight[i]) * ((directions[reflection_direction][1] * split[reflection_direction]) - (directions[i][1] * split[i])));
-                        atomicAdd(&(reflection->z), (current_point->particle_distribution[i/3] * current_point->reflection_weight[i]) * ((directions[reflection_direction][2] * split[reflection_direction]) - (directions[i][2] * split[i])));
+                        atomicAdd(&(reflection->x), (current_point->particle_distribution[i/3] * current_point->d_reflections->reflection_weight[i]) * ((directions[reflection_direction][0] * split[reflection_direction]) - (directions[i][0] * split[i])));
+                        atomicAdd(&(reflection->y), (current_point->particle_distribution[i/3] * current_point->d_reflections->reflection_weight[i]) * ((directions[reflection_direction][1] * split[reflection_direction]) - (directions[i][1] * split[i])));
+                        atomicAdd(&(reflection->z), (current_point->particle_distribution[i/3] * current_point->d_reflections->reflection_weight[i]) * ((directions[reflection_direction][2] * split[reflection_direction]) - (directions[i][2] * split[i])));
                     }
                 }
             }
