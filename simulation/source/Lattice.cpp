@@ -14,6 +14,7 @@
 #include "LatticePoint.h"
 #include "Model.h"
 #include "Utils.h"
+#include "Constants.h"
 
 #include "device_launch_parameters.h"
 #include "SimCalcFuncs.cuh"
@@ -260,7 +261,7 @@ void Lattice::insertModel(std::string filename)
 
 std::array<std::pair<float, int>, 27> Lattice::distributeVector(Point_3 vector)
 {
-    constexpr float directions[27][3] = {  {0.0, 0.0, 0.0},
+    constexpr float directions_unit[27][3] = {  {0.0, 0.0, 0.0},
                                             {-1.0, 0.0, 0.0}, 
                                             {0.0, -1.0, 0.0}, 
                                             {0.0, 0.0, -1.0}, 
@@ -292,9 +293,9 @@ std::array<std::pair<float, int>, 27> Lattice::distributeVector(Point_3 vector)
     
     auto dist_func = [&](int index)
     {
-        return 2.0 - sqrt(((vector.x - directions[index][0]) * (vector.x - directions[index][0])) +
-                          ((vector.y - directions[index][1]) * (vector.y - directions[index][1])) +
-                          ((vector.z - directions[index][2]) * (vector.z - directions[index][2])));
+        return 2.0 - sqrt(((vector.x - directions_unit[index][0]) * (vector.x - directions_unit[index][0])) +
+                          ((vector.y - directions_unit[index][1]) * (vector.y - directions_unit[index][1])) +
+                          ((vector.z - directions_unit[index][2]) * (vector.z - directions_unit[index][2])));
     };
 
     auto top_pop = [&]()
@@ -326,9 +327,6 @@ void Lattice::preProcessModel()
         return;
     }
 
-    constexpr int directions[27][3] = {{0, 0, 0}, {-1, 0, 0}, {0, -1, 0}, {0, 0, -1}, {0, 0, 1}, {0, 1, 0}, {1, 0, 0}, {-1, -1, 0}, {-1, 0, -1}, {-1, 0, 1}, {-1, 1, 0}, {0, -1, -1}, {0, -1, 1}, {0, 1, -1}, {0, 1, 1}, {1, -1, 0}, {1, 0, -1}, {1, 0, 1}, {1, 1, 0}, {-1, -1, -1}, {-1, -1, 1}, {-1, 1, -1}, {-1, 1, 1}, {1, -1, -1}, {1, -1, 1}, {1, 1, -1}, {1, 1, 1}};
-    constexpr int inverse_directions[27] = {0, 6, 5, 4, 3, 2, 1, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 26, 25, 24, 23, 22, 21, 20, 19};
-
     LatticePoint* data_array = retrieve_data();
 
     std::vector<LatticePoint*> elements_that_reflect;
@@ -345,19 +343,19 @@ void Lattice::preProcessModel()
                 {
                     for(int dir_index = 0; dir_index < 27; ++dir_index)
                     {
-                        if( ((x + directions[dir_index][0]) >= m_xResolution) ||
-                            ((y + directions[dir_index][1]) >= m_yResolution) ||
-                            ((z + directions[dir_index][2]) >= m_zResolution) ||
-                            ((x + directions[dir_index][0]) < 0) ||
-                            ((y + directions[dir_index][1]) < 0) ||
-                            ((z + directions[dir_index][2]) < 0))
+                        if( ((x + CONSTANTS::DIRECTIONS[dir_index][0]) >= m_xResolution) ||
+                            ((y + CONSTANTS::DIRECTIONS[dir_index][1]) >= m_yResolution) ||
+                            ((z + CONSTANTS::DIRECTIONS[dir_index][2]) >= m_zResolution) ||
+                            ((x + CONSTANTS::DIRECTIONS[dir_index][0]) < 0) ||
+                            ((y + CONSTANTS::DIRECTIONS[dir_index][1]) < 0) ||
+                            ((z + CONSTANTS::DIRECTIONS[dir_index][2]) < 0))
                         {
                             continue;
                         }
 
                         if(!getElementAtDirection(x, y, z, dir_index, data_array)->isInternal)
                         {
-                            Point_3 reflection_vector = m_simModel->reflectionVector(CoordsSystem::Point_3(m_latticeSpacing * (x + directions[dir_index][0]), m_latticeSpacing * (y + directions[dir_index][1]), m_latticeSpacing * (z + directions[dir_index][2])),
+                            Point_3 reflection_vector = m_simModel->reflectionVector(CoordsSystem::Point_3(m_latticeSpacing * (x + CONSTANTS::DIRECTIONS[dir_index][0]), m_latticeSpacing * (y + CONSTANTS::DIRECTIONS[dir_index][1]), m_latticeSpacing * (z + CONSTANTS::DIRECTIONS[dir_index][2])),
                                                                                      CoordsSystem::Point_3(m_latticeSpacing * x, m_latticeSpacing * y, m_latticeSpacing * z));
 
                             std::array<std::pair<float, int>, 27> resulting_dist = distributeVector(reflection_vector);
@@ -381,12 +379,10 @@ void Lattice::preProcessModel()
                                         m_reflections.push_back(values);
 
                                         curr_element->reflections = &m_reflections.back();
-
-                                        std::cout << m_reflections.size() << std::endl;
                                     }
 
-                                    setReflectionDirection(curr_element, inverse_directions[dir_index] * 3 + counter, resulting_dist[i].second);
-                                    curr_element->reflections->reflection_weight[inverse_directions[dir_index] * 3 + counter] = resulting_dist[i].first;
+                                    setReflectionDirection(curr_element, CONSTANTS::INVERSE_DIRECTIONS[dir_index] * 3 + counter, resulting_dist[i].second);
+                                    curr_element->reflections->reflection_weight[CONSTANTS::INVERSE_DIRECTIONS[dir_index] * 3 + counter] = resulting_dist[i].first;
 
                                     norm += resulting_dist[i].first;
 
@@ -405,9 +401,9 @@ void Lattice::preProcessModel()
                             {
                                 for(int i = 0; i < 3; ++i)
                                 {
-                                    if(getReflectionDirection(curr_element, inverse_directions[dir_index] * 3 + i) != 0)
+                                    if(getReflectionDirection(curr_element, CONSTANTS::INVERSE_DIRECTIONS[dir_index] * 3 + i) != 0)
                                     {
-                                        curr_element->reflections->reflection_weight[inverse_directions[dir_index] * 3 + i] /= norm;
+                                        curr_element->reflections->reflection_weight[CONSTANTS::INVERSE_DIRECTIONS[dir_index] * 3 + i] /= norm;
                                     }
                                 }
                             }
@@ -448,9 +444,7 @@ ReflectionData* Lattice::retrieve_reflection_data()
 
 inline LatticePoint* Lattice::getElementAtDirection(int& x, int& y, int& z, int& dir_index, LatticePoint* data_array)
 {
-    constexpr int directions[27][3] = {{0, 0, 0}, {-1, 0, 0}, {0, -1, 0}, {0, 0, -1}, {0, 0, 1}, {0, 1, 0}, {1, 0, 0}, {-1, -1, 0}, {-1, 0, -1}, {-1, 0, 1}, {-1, 1, 0}, {0, -1, -1}, {0, -1, 1}, {0, 1, -1}, {0, 1, 1}, {1, -1, 0}, {1, 0, -1}, {1, 0, 1}, {1, 1, 0}, {-1, -1, -1}, {-1, -1, 1}, {-1, 1, -1}, {-1, 1, 1}, {1, -1, -1}, {1, -1, 1}, {1, 1, -1}, {1, 1, 1}};
-
-    return &data_array[(z + directions[dir_index][2]) + ((y + directions[dir_index][1]) * m_zResolution) + ((x + directions[dir_index][0]) * m_zResolution * m_yResolution)];
+    return &data_array[(z + CONSTANTS::DIRECTIONS[dir_index][2]) + ((y + CONSTANTS::DIRECTIONS[dir_index][1]) * m_zResolution) + ((x + CONSTANTS::DIRECTIONS[dir_index][0]) * m_zResolution * m_yResolution)];
 }
 
 void Lattice::setReflectionDirection(LatticePoint* point, const int index, const unsigned int value)
