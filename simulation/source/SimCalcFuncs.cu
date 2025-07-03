@@ -9,6 +9,10 @@
 #include "SimCalcFuncs.cuh"
 #include "FlowCriterion.cuh"
 
+__device__ const constexpr int DIRECTIONS[27][3] = {{0, 0, 0}, {-1, 0, 0}, {0, -1, 0}, {0, 0, -1}, {0, 0, 1}, {0, 1, 0}, {1, 0, 0}, {-1, -1, 0}, {-1, 0, -1}, {-1, 0, 1}, {-1, 1, 0}, {0, -1, -1}, {0, -1, 1}, {0, 1, -1}, {0, 1, 1}, {1, -1, 0}, {1, 0, -1}, {1, 0, 1}, {1, 1, 0}, {-1, -1, -1}, {-1, -1, 1}, {-1, 1, -1}, {-1, 1, 1}, {1, -1, -1}, {1, -1, 1}, {1, 1, -1}, {1, 1, 1}};
+__device__ const constexpr int INVERSE_DIRECTIONS[27] = {0, 6, 5, 4, 3, 2, 1, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 26, 25, 24, 23, 22, 21, 20, 19};
+__device__ const constexpr float SPLIT[27] = {0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0};
+
 namespace CudaFunctions
 {
     __device__ int getReflectionDirection(LatticePoint* point, const int index)
@@ -76,20 +80,17 @@ namespace CudaFunctions
     {
         LatticePoint* current_point = get_lattice_point(templattice, true);
 
-        constexpr int directions[27][3] = {{0, 0, 0}, {-1, 0, 0}, {0, -1, 0}, {0, 0, -1}, {0, 0, 1}, {0, 1, 0}, {1, 0, 0}, {-1, -1, 0}, {-1, 0, -1}, {-1, 0, 1}, {-1, 1, 0}, {0, -1, -1}, {0, -1, 1}, {0, 1, -1}, {0, 1, 1}, {1, -1, 0}, {1, 0, -1}, {1, 0, 1}, {1, 1, 0}, {-1, -1, -1}, {-1, -1, 1}, {-1, 1, -1}, {-1, 1, 1}, {1, -1, -1}, {1, -1, 1}, {1, 1, -1}, {1, 1, 1}};
-        constexpr int inverse_directions[27] = {0, 6, 5, 4, 3, 2, 1, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 26, 25, 24, 23, 22, 21, 20, 19};
-
         for(int i = 0; i < 27; ++i)
         {
-            LatticePoint* neighbour = get_lattice_at_coords(lattice, current_point->x + directions[i][0], current_point->y + directions[i][1], current_point->z + directions[i][2]);
+            LatticePoint* neighbour = get_lattice_at_coords(lattice, current_point->x + DIRECTIONS[i][0], current_point->y + DIRECTIONS[i][1], current_point->z + DIRECTIONS[i][2]);
 
             if(neighbour != nullptr)
             {
-                current_point->particle_distribution[inverse_directions[i]] = neighbour->particle_distribution[inverse_directions[i]];
+                current_point->particle_distribution[INVERSE_DIRECTIONS[i]] = neighbour->particle_distribution[INVERSE_DIRECTIONS[i]];
             }
             else
             {
-                current_point->particle_distribution[inverse_directions[i]] = 0.0;
+                current_point->particle_distribution[INVERSE_DIRECTIONS[i]] = 0.0;
             }
         }
     }
@@ -103,15 +104,12 @@ namespace CudaFunctions
         float uy = 0.0;
         float uz = 0.0;
 
-        constexpr int directions[27][3] = {{0, 0, 0}, {-1, 0, 0}, {0, -1, 0}, {0, 0, -1}, {0, 0, 1}, {0, 1, 0}, {1, 0, 0}, {-1, -1, 0}, {-1, 0, -1}, {-1, 0, 1}, {-1, 1, 0}, {0, -1, -1}, {0, -1, 1}, {0, 1, -1}, {0, 1, 1}, {1, -1, 0}, {1, 0, -1}, {1, 0, 1}, {1, 1, 0}, {-1, -1, -1}, {-1, -1, 1}, {-1, 1, -1}, {-1, 1, 1}, {1, -1, -1}, {1, -1, 1}, {1, 1, -1}, {1, 1, 1}};
-        constexpr float split[27] = {0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0};
-
         for(int i = 0; i < 27; ++i)
         {
             density += current_point->particle_distribution[i];
-            ux += current_point->particle_distribution[i] * directions[i][0] * split[i];
-            uy += current_point->particle_distribution[i] * directions[i][1] * split[i];
-            uz += current_point->particle_distribution[i] * directions[i][2] * split[i];
+            ux += current_point->particle_distribution[i] * DIRECTIONS[i][0] * SPLIT[i];
+            uy += current_point->particle_distribution[i] * DIRECTIONS[i][1] * SPLIT[i];
+            uz += current_point->particle_distribution[i] * DIRECTIONS[i][2] * SPLIT[i];
         }
         
         if(density != 0.0)
@@ -122,7 +120,7 @@ namespace CudaFunctions
         }
 
         {   
-            float common_term = ((directions[0][0] * ux) + (directions[0][1] * uy) + (directions[0][2] * uz));
+            float common_term = ((DIRECTIONS[0][0] * ux) + (DIRECTIONS[0][1] * uy) + (DIRECTIONS[0][2] * uz));
 
             float eq = (8.0/27.0) * density * (1 + (3.0 * common_term) + (4.5 * common_term * common_term) - (1.5 * ((ux * ux) + (uy * uy) + (uz * uz))));
 
@@ -131,7 +129,7 @@ namespace CudaFunctions
 
         for(int i = 1; i < 7; ++i)
         {
-            float common_term = ((directions[i][0] * ux) + (directions[i][1] * uy) + (directions[i][2] * uz));
+            float common_term = ((DIRECTIONS[i][0] * ux) + (DIRECTIONS[i][1] * uy) + (DIRECTIONS[i][2] * uz));
 
             float eq = (2.0/27.0) * density * (1 + (3.0 * common_term) + (4.5 * common_term * common_term) - (1.5 * ((ux * ux) + (uy * uy) + (uz * uz))));
 
@@ -140,7 +138,7 @@ namespace CudaFunctions
 
         for(int i = 7; i < 19; ++i)
         {
-            float common_term = ((directions[i][0] * ux) + (directions[i][1] * uy) + (directions[i][2] * uz));
+            float common_term = ((DIRECTIONS[i][0] * ux) + (DIRECTIONS[i][1] * uy) + (DIRECTIONS[i][2] * uz));
 
             float eq = (1.0/54.0) * density * (1 + (3.0 * common_term) + (4.5 * common_term * common_term) - (1.5 * ((ux * ux) + (uy * uy) + (uz * uz))));
 
@@ -149,7 +147,7 @@ namespace CudaFunctions
 
         for(int i = 19; i < 27; ++i)
         {
-            float common_term = ((directions[i][0] * ux) + (directions[i][1] * uy) + (directions[i][2] * uz));
+            float common_term = ((DIRECTIONS[i][0] * ux) + (DIRECTIONS[i][1] * uy) + (DIRECTIONS[i][2] * uz));
 
             float eq = (1.0/216.0) * density * (1 + (3.0 * common_term) + (4.5 * common_term * common_term) - (1.5 * ((ux * ux) + (uy * uy) + (uz * uz))));
 
@@ -160,9 +158,6 @@ namespace CudaFunctions
     __global__ void calculate_reflections(LatticeData lattice, LatticeData templattice, ReflectionData* reflection = nullptr)
     {
         LatticePoint* current_point = get_lattice_point(lattice);
-
-        constexpr int directions[27][3] = {{0, 0, 0}, {-1, 0, 0}, {0, -1, 0}, {0, 0, -1}, {0, 0, 1}, {0, 1, 0}, {1, 0, 0}, {-1, -1, 0}, {-1, 0, -1}, {-1, 0, 1}, {-1, 1, 0}, {0, -1, -1}, {0, -1, 1}, {0, 1, -1}, {0, 1, 1}, {1, -1, 0}, {1, 0, -1}, {1, 0, 1}, {1, 1, 0}, {-1, -1, -1}, {-1, -1, 1}, {-1, 1, -1}, {-1, 1, 1}, {1, -1, -1}, {1, -1, 1}, {1, 1, -1}, {1, 1, 1}};
-        constexpr float split[27] = {0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0, 1.0/3.0};
 
         if(current_point->isReflected)
         {
@@ -175,7 +170,7 @@ namespace CudaFunctions
                     continue;
                 }
 
-                LatticePoint* neighbour = get_lattice_at_coords(templattice, current_point->x + directions[reflection_direction][0], current_point->y + directions[reflection_direction][1], current_point->z + directions[reflection_direction][2]);
+                LatticePoint* neighbour = get_lattice_at_coords(templattice, current_point->x + DIRECTIONS[reflection_direction][0], current_point->y + DIRECTIONS[reflection_direction][1], current_point->z + DIRECTIONS[reflection_direction][2]);
 
                 if(neighbour != nullptr)
                 {
@@ -183,9 +178,9 @@ namespace CudaFunctions
 
                     if(reflection != nullptr)
                     {
-                        atomicAdd(&(reflection->x), (current_point->particle_distribution[i/3] * current_point->d_reflections->reflection_weight[i]) * ((directions[reflection_direction][0] * split[reflection_direction]) - (directions[i][0] * split[i])));
-                        atomicAdd(&(reflection->y), (current_point->particle_distribution[i/3] * current_point->d_reflections->reflection_weight[i]) * ((directions[reflection_direction][1] * split[reflection_direction]) - (directions[i][1] * split[i])));
-                        atomicAdd(&(reflection->z), (current_point->particle_distribution[i/3] * current_point->d_reflections->reflection_weight[i]) * ((directions[reflection_direction][2] * split[reflection_direction]) - (directions[i][2] * split[i])));
+                        atomicAdd(&(reflection->x), (current_point->particle_distribution[i/3] * current_point->d_reflections->reflection_weight[i]) * ((DIRECTIONS[reflection_direction][0] * SPLIT[reflection_direction]) - (DIRECTIONS[i][0] * SPLIT[i])));
+                        atomicAdd(&(reflection->y), (current_point->particle_distribution[i/3] * current_point->d_reflections->reflection_weight[i]) * ((DIRECTIONS[reflection_direction][1] * SPLIT[reflection_direction]) - (DIRECTIONS[i][1] * SPLIT[i])));
+                        atomicAdd(&(reflection->z), (current_point->particle_distribution[i/3] * current_point->d_reflections->reflection_weight[i]) * ((DIRECTIONS[reflection_direction][2] * SPLIT[reflection_direction]) - (DIRECTIONS[i][2] * SPLIT[i])));
                     }
                 }
             }
