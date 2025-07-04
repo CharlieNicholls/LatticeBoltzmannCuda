@@ -14,9 +14,11 @@ namespace RunCudaFunctions
 {
     void run_calculate_streaming(dim3 blocks, dim3 threads, LatticeData lattice, LatticeData templattice);
 
-    void run_calculate_collision(dim3 blocks, dim3 threads, LatticeData lattice, double timescale);
+    void run_calculate_collision(dim3 blocks, dim3 threads, LatticeData lattice, float timescale);
 
     void run_calculate_reflections(dim3 blocks, dim3 threads, LatticeData lattice, LatticeData templattice);
+
+    void run_calculate_reflections_data(dim3 blocks, dim3 threads, LatticeData lattice, LatticeData templattice, ReflectionData* relfections);
 
     void run_prime_points(dim3 blocks, dim3 threads, LatticeData lattice);
 

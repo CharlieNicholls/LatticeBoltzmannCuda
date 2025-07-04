@@ -12,7 +12,7 @@
 
 #include "Model.h"
 
-typedef CGAL::Simple_cartesian<double> CoordsSystem;
+typedef CGAL::Simple_cartesian<float> CoordsSystem;
 typedef CGAL::Surface_mesh<CoordsSystem::Point_3> Mesh;
 typedef CGAL::AABB_face_graph_triangle_primitive<Mesh> Primitive;
 typedef CGAL::AABB_traits<CoordsSystem, Primitive> AABB_traits;
@@ -36,6 +36,11 @@ void Model::importModel(std::string filename)
     }
 
     lazyAabbTreeConstruction();
+
+    if(!isModelClosed())
+    {
+        meshValid = false;
+    }
 }
 
 bool Model::isModelClosed()
@@ -43,16 +48,10 @@ bool Model::isModelClosed()
     return CGAL::is_closed(modelMesh);
 }
 
-bool Model::isPointInsideModel(CGAL::Simple_cartesian<double>::Point_3 point)
+bool Model::isPointInsideModel(CGAL::Simple_cartesian<float>::Point_3 point)
 {
-    if(!isModelClosed())
+    if(!meshValid)
     {
-        return false;
-    }
-
-    if(!CGAL::is_triangle_mesh(modelMesh))
-    {
-        meshValid = false;
         return false;
     }
 
@@ -68,7 +67,7 @@ void Model::lazyAabbTreeConstruction()
     modelTree = new AABB_tree(faces(modelMesh).first, faces(modelMesh).second, modelMesh);
 }
 
-CGAL::Simple_cartesian<double>::Iso_cuboid_3 Model::bounding_box()
+CGAL::Simple_cartesian<float>::Iso_cuboid_3 Model::bounding_box()
 {
     return CGAL::bounding_box(modelMesh.points().begin(), modelMesh.points().end());
 }

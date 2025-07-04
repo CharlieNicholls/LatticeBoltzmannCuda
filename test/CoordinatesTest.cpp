@@ -28,7 +28,61 @@ TEST(CoordinatesTest, TestLoadAndRetrieve)
 
     LatticePoint* tempLatticeArray = testLattice.retrieve_data();
 
-    EXPECT_NEAR(tempLatticeArray[0].particle_distribution[5], latticeArray[0].particle_distribution[5], 1e-9);
+    EXPECT_NEAR(tempLatticeArray[0].particle_distribution[5], latticeArray[0].particle_distribution[5], 1e-6);
+}
+
+TEST(CoordinatesTest, TestCoordsMatch)
+{
+    dim3 threads(10, 10, 10);
+    dim3 blocks(10, 10, 10);
+
+    FluidData fluid(1.0, 1.0);
+
+    Lattice testLattice(100, 100, 100, blocks, threads, fluid, 0.1);
+
+    LatticePoint* latticeArray = new LatticePoint[100 * 100 * 100];
+
+    int counter = 0;
+
+    for(int x = 0; x < 100; ++x)
+    {
+        for(int y = 0; y < 100; ++y)
+        {
+            for(int z = 0; z < 100; ++z)
+            {
+                LatticePoint curr_point;
+
+                curr_point.x = x;
+                curr_point.y = y;
+                curr_point.z = z;
+
+                latticeArray[counter] = curr_point;
+
+                ++counter;
+            }
+        }
+    }
+
+    testLattice.load_data(latticeArray);
+
+    LatticeData data = LatticeData(testLattice.getCudaDataPointer(), testLattice.getDimensions());
+    
+    //RunCudaTestFunctions::run_prime_points(threads, blocks, data);
+
+    latticeArray = testLattice.retrieve_data();
+
+    for(int x = 0; x < 100; ++x)
+    {
+        for(int y = 0; y < 100; ++y)
+        {
+            for(int z = 0; z < 100; ++z)
+            {
+                EXPECT_EQ(latticeArray[z + (y * 100) + (x * 10000)].x, x);
+                EXPECT_EQ(latticeArray[z + (y * 100) + (x * 10000)].y, y);
+                EXPECT_EQ(latticeArray[z + (y * 100) + (x * 10000)].z, z);
+            }
+        }
+    }
 }
 
 TEST(CoordinatesTest, TestCoordinatesOnCopy)
@@ -125,11 +179,11 @@ TEST(CoordinatesTest, TestDistributeVector)
 
     Point_3 vector(1.0, 0.1, 0.1);
 
-    std::array<std::pair<double, int>, 3> expected{std::pair<double, int>{0.4134132615337746, 6}, std::pair<double, int>{0.2932933692331128, 18}, std::pair<double, int>{0.2932933692331128, 17}};
+    std::array<std::pair<float, int>, 3> expected{std::pair<float, int>{0.4134132615337746, 6}, std::pair<float, int>{0.2932933692331128, 18}, std::pair<float, int>{0.2932933692331128, 17}};
 
-    std::array<std::pair<double, int>, 27> result = testLattice.distributeVector(vector);
+    std::array<std::pair<float, int>, 27> result = testLattice.distributeVector(vector);
 
-    double norm = result[0].first + result[1].first + result[2].first;
+    float norm = result[0].first + result[1].first + result[2].first;
 
     result[0].first /= norm;
     result[1].first /= norm;
@@ -166,12 +220,12 @@ TEST(CoordinatesTest, TestReflection)
 
     LatticePoint* tempLatticeArray = testLattice.retrieve_data();
 
-    EXPECT_NEAR(tempLatticeArray[13].reflection_weight[1*3 + 0], 0.367402, 1e-6);
-    EXPECT_NEAR(tempLatticeArray[13].reflection_weight[1*3 + 1], 0.341121, 1e-6);
-    EXPECT_NEAR(tempLatticeArray[13].reflection_weight[1*3 + 2], 0.291477, 1e-6);
-    EXPECT_EQ(tempLatticeArray[13].reflection_directions[1*3 + 0], 17);
-    EXPECT_EQ(tempLatticeArray[13].reflection_directions[1*3 + 1], 4);
-    EXPECT_EQ(tempLatticeArray[13].reflection_directions[1*3 + 2], 26);
+    EXPECT_NEAR(tempLatticeArray[13].reflections->reflection_weight[1*3 + 0], 0.367402, 1e-6);
+    EXPECT_NEAR(tempLatticeArray[13].reflections->reflection_weight[1*3 + 1], 0.341121, 1e-6);
+    EXPECT_NEAR(tempLatticeArray[13].reflections->reflection_weight[1*3 + 2], 0.291477, 1e-6);
+    EXPECT_EQ(testLattice.getReflectionDirection(&tempLatticeArray[13], 3), 17);
+    EXPECT_EQ(testLattice.getReflectionDirection(&tempLatticeArray[13], 4), 4);
+    EXPECT_EQ(testLattice.getReflectionDirection(&tempLatticeArray[13], 5), 26);
 }
 
 int main()
