@@ -7,6 +7,7 @@
 #include "FlowSurface.h"
 #include "FlowCriterion.cuh"
 #include "SimCalcFuncs.cuh"
+#include "Renderer.cuh"
 
 int main(int argc, char *argv[])
 {
@@ -82,9 +83,15 @@ int main(int argc, char *argv[])
         std::cout << reflection->x << " " << reflection->y << " " << reflection->z << std::endl;
     };
 
+    Renderer render_controller(userLattice.getDimensions().x * 5, userLattice.getDimensions().y * 5, userLattice.getDimensions().z/2);
+
+    render_controller.runRenderer();
+
     for(int step = 0; step < atoi(argv[11]); ++step)
     {
         print_data();
+        userLattice.updateRenderData(render_controller.getDataPtr());
+        render_controller.display();
 
         userLattice.simulateStreaming();
         userLattice.simulateReflections();

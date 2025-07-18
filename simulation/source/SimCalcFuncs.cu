@@ -90,7 +90,10 @@ namespace CudaFunctions
             }
             else
             {
-                current_point->particle_distribution[INVERSE_DIRECTIONS[i]] = 0.0;
+                //LatticePoint* current_data = get_lattice_at_coords(lattice, current_point->x, current_point->y, current_point->z);
+                //current_point->particle_distribution[INVERSE_DIRECTIONS[i]] = current_data->particle_distribution[INVERSE_DIRECTIONS[i]];
+
+                current_point->particle_distribution[INVERSE_DIRECTIONS[i]] = 0.001;
             }
         }
     }
@@ -178,9 +181,9 @@ namespace CudaFunctions
 
                     if(reflection != nullptr)
                     {
-                        atomicAdd(&(reflection->x), (current_point->particle_distribution[i/3] * current_point->d_reflections->reflection_weight[i]) * ((DIRECTIONS[reflection_direction][0] * SPLIT[reflection_direction]) - (DIRECTIONS[i][0] * SPLIT[i])));
-                        atomicAdd(&(reflection->y), (current_point->particle_distribution[i/3] * current_point->d_reflections->reflection_weight[i]) * ((DIRECTIONS[reflection_direction][1] * SPLIT[reflection_direction]) - (DIRECTIONS[i][1] * SPLIT[i])));
-                        atomicAdd(&(reflection->z), (current_point->particle_distribution[i/3] * current_point->d_reflections->reflection_weight[i]) * ((DIRECTIONS[reflection_direction][2] * SPLIT[reflection_direction]) - (DIRECTIONS[i][2] * SPLIT[i])));
+                        atomicAdd(&(reflection->x), (current_point->particle_distribution[i/3] * current_point->d_reflections->reflection_weight[i]) * ((DIRECTIONS[reflection_direction][0] * SPLIT[reflection_direction]) - (DIRECTIONS[i/3][0] * SPLIT[i/3])));
+                        atomicAdd(&(reflection->y), (current_point->particle_distribution[i/3] * current_point->d_reflections->reflection_weight[i]) * ((DIRECTIONS[reflection_direction][1] * SPLIT[reflection_direction]) - (DIRECTIONS[i/3][1] * SPLIT[i/3])));
+                        atomicAdd(&(reflection->z), (current_point->particle_distribution[i/3] * current_point->d_reflections->reflection_weight[i]) * ((DIRECTIONS[reflection_direction][2] * SPLIT[reflection_direction]) - (DIRECTIONS[i/3][2] * SPLIT[i/3])));
                     }
                 }
             }

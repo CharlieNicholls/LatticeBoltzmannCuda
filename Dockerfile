@@ -1,8 +1,11 @@
-FROM nvidia/cuda:12.8.0-devel-ubuntu22.04
+FROM nvidia/cuda:12.4.0-devel-ubuntu22.04
 
 RUN apt update -y && apt upgrade -y
 
-RUN apt install -y gcc \
+RUN apt install -y --allow-change-held-packages \
+                   libcublas-12-8 \
+                   libcublas-dev-12-8 \
+                   gcc \
                    g++ \
                    nvidia-container-toolkit \
                    cmake \

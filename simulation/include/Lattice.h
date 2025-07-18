@@ -70,6 +70,8 @@ public:
     void setReflectionDirection(LatticePoint* point, const int index, const unsigned int value);
     int getReflectionDirection(LatticePoint* point, const int index);
 
+    void updateRenderData(float* dataPtr);
+
 private:
     void createExtent();
     void allocateLatticeArray();

@@ -15,6 +15,7 @@
 #include "Model.h"
 #include "Utils.h"
 #include "Constants.h"
+#include "Render.cuh"
 
 #include "device_launch_parameters.h"
 #include "SimCalcFuncs.cuh"
@@ -474,4 +475,9 @@ int Lattice::getReflectionDirection(LatticePoint* point, const int index)
     result = result >> compressedLoc * 5;
     
     return result;
+}
+
+void Lattice::updateRenderData(float* dataPtr)
+{
+    RunCudaFunctions::run_render_output_data(m_blocks, m_threads, m_dataPackage, dataPtr, m_zResolution/2);
 }

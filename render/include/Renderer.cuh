@@ -9,21 +9,29 @@
 #include <cuda_gl_interop.h>
 #include <iostream>
 
-static int m_width = 800;
-static int m_height = 600;
 static GLuint pbo = 0;
 extern GLFWwindow* window;
 static cudaGraphicsResource* cuda_pbo_resource;
 static uchar4* m_devPtr;
 
-class renderer
+class Renderer
 {
 public:
+    Renderer(int x, int y, int z) : m_width(x), m_height(y), z_layer(z) {}
+
     void runRenderer();
-    uchar4* getRenderPtr();
     void runCuda();
 
-private:
-    void initPBO();
+    float* getDataPtr() {return display_data;};
+
     void display();
+
+private:
+    void init();
+
+    float* display_data = nullptr;
+
+    int m_width = 100;
+    int m_height = 100;
+    int z_layer = 0;
 };
